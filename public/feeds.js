@@ -4,6 +4,7 @@
  */
 const FEEDS = {
   youtube: [
+    { name: 'jl ౨ৎ', url: 'https://www.youtube.com/feeds/videos.xml?channel_id=UCo27y8yyaqVVHLKXwRFn0Qg', limit: 3 },
     { name: 'TAFLINE ANG XIN TING _', url: 'https://www.youtube.com/feeds/videos.xml?channel_id=UC0-UJL01tIan3g7RGsOTTfA', limit: 3 },
     { name: 'Benjamin Gan', url: 'https://www.youtube.com/feeds/videos.xml?channel_id=UC5AOC776HwOIy6gp68Xx0sA', limit: 3 },
     { name: 'Trevor Tan', url: 'https://www.youtube.com/feeds/videos.xml?channel_id=UCYxG-71K9lb1-iMch9tuCtA', limit: 3 },
