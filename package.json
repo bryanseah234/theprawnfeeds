@@ -7,7 +7,7 @@
     "start": "vercel dev"
   },
   "dependencies": {
-    "fast-xml-parser": "^4.5.3",
+    "fast-xml-parser": "^5.3.4",
     "sanitize-html": "^2.15.0"
   },
   "engines": {
