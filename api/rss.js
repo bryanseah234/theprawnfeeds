@@ -2,6 +2,8 @@ const { XMLParser } = require('fast-xml-parser');
 const sanitizeHtml = require('sanitize-html');
 const dns = require('node:dns').promises;
 const net = require('node:net');
+const fs = require('node:fs');
+const path = require('node:path');
 
 // In-memory cache with 60-minute TTL
 const cache = new Map();
@@ -10,6 +12,8 @@ const FETCH_TIMEOUT_MS = 25000;
 const FETCH_RETRIES = 1;
 const YOUTUBE_FETCH_RETRIES = 4;
 const YOUTUBE_SHORTS_PATTERN = /(^|\s)#shorts?\b|\bshorts?\b/i;
+const YOUTUBE_SHORT_DURATION_MAX_SECONDS = 180;
+const YOUTUBE_API_BASE_URL = 'https://www.googleapis.com/youtube/v3';
 const ALLOWED_PROTOCOLS = new Set(['http:', 'https:']);
 const BLOCKED_HOSTS = new Set([
   'localhost',
@@ -21,6 +25,43 @@ const BLOCKED_HOSTS = new Set([
   '169.254.169.254',
   'metadata.google.internal'
 ]);
+
+/**
+ * Load .env from project root for local development.
+ * Vercel production uses dashboard environment variables directly.
+ */
+function loadLocalEnvFile() {
+  try {
+    const envPath = path.join(process.cwd(), '.env');
+    if (!fs.existsSync(envPath)) return;
+
+    const raw = fs.readFileSync(envPath, 'utf8');
+    const lines = raw.split(/\r?\n/);
+
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (!trimmed || trimmed.startsWith('#')) continue;
+
+      const idx = trimmed.indexOf('=');
+      if (idx <= 0) continue;
+
+      const key = trimmed.slice(0, idx).trim();
+      let value = trimmed.slice(idx + 1).trim();
+
+      if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
+        value = value.slice(1, -1);
+      }
+
+      if (!(key in process.env)) {
+        process.env[key] = value;
+      }
+    }
+  } catch {
+    // Ignore local env loading issues and continue with existing process.env.
+  }
+}
+
+loadLocalEnvFile();
 
 /**
  * Check if an IPv4 address is private/internal/reserved.
@@ -213,6 +254,223 @@ function isYoutubeFeedUrl(feedUrl) {
   } catch {
     return false;
   }
+}
+
+/**
+ * Extract YouTube channel ID from standard feed URL.
+ * @param {string} feedUrl
+ * @returns {string}
+ */
+function extractYoutubeChannelId(feedUrl) {
+  try {
+    const parsed = new URL(feedUrl);
+    return parsed.searchParams.get('channel_id') || '';
+  } catch {
+    return '';
+  }
+}
+
+/**
+ * Parse ISO 8601 duration (PT#H#M#S) into seconds.
+ * @param {string} duration
+ * @returns {number}
+ */
+function parseIsoDurationToSeconds(duration = '') {
+  if (!duration || typeof duration !== 'string') return 0;
+
+  const match = duration.match(/^PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?$/);
+  if (!match) return 0;
+
+  const hours = Number(match[1] || 0);
+  const minutes = Number(match[2] || 0);
+  const seconds = Number(match[3] || 0);
+  return (hours * 3600) + (minutes * 60) + seconds;
+}
+
+/**
+ * Check whether configured YouTube API key looks usable.
+ * @param {string} apiKey
+ * @returns {boolean}
+ */
+function isUsableYoutubeApiKey(apiKey = '') {
+  const normalized = String(apiKey || '').trim();
+  if (!normalized) return false;
+  if (normalized.length < 20) return false;
+
+  const placeholderPatterns = ['your_', 'replace_', 'changeme', '<', '>'];
+  const lowered = normalized.toLowerCase();
+  return !placeholderPatterns.some(token => lowered.includes(token));
+}
+
+/**
+ * Determine whether a YouTube video should be treated as a Short.
+ * Uses duration first when available, then title/description heuristic fallback.
+ * @param {object} video
+ * @returns {boolean}
+ */
+function isYoutubeShortVideo(video = {}) {
+  const duration = video?.contentDetails?.duration;
+  const durationSeconds = parseIsoDurationToSeconds(duration);
+
+  if (durationSeconds > 0 && durationSeconds <= YOUTUBE_SHORT_DURATION_MAX_SECONDS) {
+    return true;
+  }
+
+  const title = String(video?.snippet?.title || '').trim();
+  const description = String(video?.snippet?.description || '').trim();
+  const syntheticEntry = {
+    'media:group': {
+      'media:description': description
+    }
+  };
+
+  return isLikelyYoutubeShort(syntheticEntry, title, '');
+}
+
+/**
+ * Fetch JSON with retry/backoff semantics similar to RSS fetch behavior.
+ * @param {URL} url
+ * @param {number} maxRetries
+ * @returns {Promise<object>}
+ */
+async function fetchJsonWithRetries(url, maxRetries) {
+  let lastError = null;
+
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+
+    try {
+      const response = await fetch(url, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (compatible; RSS Reader/1.0)',
+          'Accept': 'application/json'
+        },
+        signal: controller.signal
+      });
+
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        const isRetriableHttp = response.status === 429 || (response.status >= 500 && response.status <= 599);
+        if (isRetriableHttp && attempt < maxRetries) {
+          await new Promise(resolve => setTimeout(resolve, 350 * (attempt + 1)));
+          continue;
+        }
+
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      return response.json();
+    } catch (error) {
+      clearTimeout(timeoutId);
+      lastError = error;
+
+      const retriableNetworkError = error?.name === 'AbortError' || /ECONNRESET|ETIMEDOUT|EAI_AGAIN|fetch failed/i.test(error?.message || '');
+      if (retriableNetworkError && attempt < maxRetries) {
+        await new Promise(resolve => setTimeout(resolve, 350 * (attempt + 1)));
+        continue;
+      }
+
+      if (attempt < maxRetries) {
+        await new Promise(resolve => setTimeout(resolve, 350 * (attempt + 1)));
+        continue;
+      }
+    }
+  }
+
+  throw lastError || new Error('Failed to fetch JSON response');
+}
+
+/**
+ * Fetch YouTube channel uploads via YouTube Data API v3.
+ * This path is significantly more reliable than YouTube RSS polling.
+ * @param {string} channelId
+ * @param {number} limit
+ * @param {string} apiKey
+ * @returns {Promise<object>}
+ */
+async function fetchYoutubeFeedViaDataApi(channelId, limit, apiKey) {
+  const channelsUrl = new URL(`${YOUTUBE_API_BASE_URL}/channels`);
+  channelsUrl.searchParams.set('part', 'snippet,contentDetails');
+  channelsUrl.searchParams.set('id', channelId);
+  channelsUrl.searchParams.set('key', apiKey);
+
+  const channelsData = await fetchJsonWithRetries(channelsUrl, YOUTUBE_FETCH_RETRIES);
+  const channel = channelsData?.items?.[0];
+  if (!channel) {
+    throw new Error('YouTube Data API returned no channel data');
+  }
+
+  const uploadsPlaylistId = channel?.contentDetails?.relatedPlaylists?.uploads;
+  if (!uploadsPlaylistId) {
+    throw new Error('YouTube channel has no uploads playlist');
+  }
+
+  const maxPlaylistResults = Math.min(Math.max(limit * 2, 10), 50);
+  const playlistUrl = new URL(`${YOUTUBE_API_BASE_URL}/playlistItems`);
+  playlistUrl.searchParams.set('part', 'snippet,contentDetails');
+  playlistUrl.searchParams.set('playlistId', uploadsPlaylistId);
+  playlistUrl.searchParams.set('maxResults', String(maxPlaylistResults));
+  playlistUrl.searchParams.set('key', apiKey);
+
+  const playlistData = await fetchJsonWithRetries(playlistUrl, YOUTUBE_FETCH_RETRIES);
+  const playlistItems = Array.isArray(playlistData?.items) ? playlistData.items : [];
+  if (playlistItems.length === 0) {
+    return {
+      title: channel?.snippet?.title || 'YouTube',
+      items: []
+    };
+  }
+
+  const videoIds = playlistItems
+    .map(item => item?.contentDetails?.videoId || item?.snippet?.resourceId?.videoId || '')
+    .filter(Boolean);
+
+  if (videoIds.length === 0) {
+    return {
+      title: channel?.snippet?.title || 'YouTube',
+      items: []
+    };
+  }
+
+  const videosUrl = new URL(`${YOUTUBE_API_BASE_URL}/videos`);
+  videosUrl.searchParams.set('part', 'snippet,contentDetails');
+  videosUrl.searchParams.set('id', videoIds.join(','));
+  videosUrl.searchParams.set('key', apiKey);
+
+  const videosData = await fetchJsonWithRetries(videosUrl, YOUTUBE_FETCH_RETRIES);
+  const videos = Array.isArray(videosData?.items) ? videosData.items : [];
+  const videoMap = new Map(videos.map(video => [video.id, video]));
+
+  const parsedItems = playlistItems.flatMap(item => {
+    const videoId = item?.contentDetails?.videoId || item?.snippet?.resourceId?.videoId || '';
+    if (!videoId) return [];
+
+    const video = videoMap.get(videoId);
+    if (!video) return [];
+    if (isYoutubeShortVideo(video)) return [];
+
+    const snippet = video?.snippet || item?.snippet || {};
+    const thumbnail =
+      snippet?.thumbnails?.high?.url ||
+      snippet?.thumbnails?.medium?.url ||
+      snippet?.thumbnails?.default?.url ||
+      '';
+
+    return [{
+      title: stripHtml(snippet?.title || 'No title'),
+      link: `https://www.youtube.com/watch?v=${videoId}`,
+      pubDate: parseDate(snippet?.publishedAt || item?.snippet?.publishedAt || ''),
+      text: stripHtml(snippet?.description || ''),
+      thumbnail
+    }];
+  });
+
+  return {
+    title: channel?.snippet?.title || 'YouTube',
+    items: sortItemsByDateDesc(parsedItems).slice(0, limit)
+  };
 }
 
 /**
@@ -431,7 +689,31 @@ async function fetchFeed(feedUrl, limit) {
   
   let lastError = null;
   const isYoutube = isYoutubeFeedUrl(feedUrl);
+  const youtubeApiKey = process.env.YOUTUBE_API_KEY || '';
+  const useYoutubeDataApi = isUsableYoutubeApiKey(youtubeApiKey);
   const maxRetries = isYoutube ? YOUTUBE_FETCH_RETRIES : FETCH_RETRIES;
+
+  // Prefer the official YouTube Data API path when an API key is configured.
+  // Falls back to RSS when key is absent or Data API call fails.
+  if (isYoutube && useYoutubeDataApi) {
+    const channelId = extractYoutubeChannelId(feedUrl);
+    if (channelId) {
+      try {
+        const youtubeData = await fetchYoutubeFeedViaDataApi(channelId, limit, youtubeApiKey);
+
+        cache.set(cacheKey, {
+          timestamp: Date.now(),
+          data: youtubeData
+        });
+
+        console.log(`[Parsed:YouTube Data API] ${feedUrl} - ${youtubeData.items.length} items`);
+        return youtubeData;
+      } catch (error) {
+        lastError = error;
+        console.warn(`[YouTube Data API Fallback] ${feedUrl}: ${error.message}`);
+      }
+    }
+  }
 
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     const controller = new AbortController();
@@ -520,7 +802,12 @@ async function fetchFeed(feedUrl, limit) {
         continue;
       }
 
-      throw error;
+      if (attempt < maxRetries) {
+        await new Promise(resolve => setTimeout(resolve, 350 * (attempt + 1)));
+        continue;
+      }
+
+      break;
     }
   }
 

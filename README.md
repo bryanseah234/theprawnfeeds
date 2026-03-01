@@ -64,6 +64,40 @@ Edit `feeds.json` to customize your feed sources:
 
 Edit `public/feeds.js` for client-side configuration.
 
+### YouTube reliability upgrade (API key)
+
+YouTube RSS endpoints can intermittently return `404`/`500` for valid channels.
+The app now supports a more robust path using **YouTube Data API v3** when
+`YOUTUBE_API_KEY` is set.
+
+#### 1) Create an API key (Google Cloud)
+
+1. Open Google Cloud Console.
+2. Create/select a project.
+3. Enable **YouTube Data API v3**.
+4. Go to **APIs & Services → Credentials**.
+5. Create an **API key**.
+6. (Recommended) Restrict the key to YouTube Data API v3 and your server usage.
+
+#### 2) Configure locally
+
+Create a `.env` file in project root and set:
+
+- `YOUTUBE_API_KEY=your_key_here`
+
+#### 3) Configure in Vercel
+
+In your Vercel project settings, add environment variable:
+
+- `YOUTUBE_API_KEY` = your key value
+
+Then redeploy.
+
+#### 4) Behavior
+
+- If `YOUTUBE_API_KEY` is present, YouTube feeds use Data API (more reliable).
+- If key is missing or API fails temporarily, app falls back to RSS behavior.
+
 ### Why both `feeds.json` and `public/feeds.js` exist
 
 The project currently has **two runtime paths**:
@@ -96,6 +130,7 @@ After pulling these changes, run `npm install` once to activate Git hooks via `p
 ## Technical Details
 
 ### Performance
+
 - 60fps animations via hardware acceleration
 - Efficient DOM manipulation
 - Lazy loading for images
@@ -103,6 +138,7 @@ After pulling these changes, run `npm install` once to activate Git hooks via `p
 - Debounced scroll handlers
 
 ### Accessibility
+
 - ARIA labels and roles
 - Keyboard navigation throughout
 - Screen reader optimized
@@ -110,6 +146,7 @@ After pulling these changes, run `npm install` once to activate Git hooks via `p
 - Semantic HTML5
 
 ### Browser Support
+
 - Modern browsers (Chrome, Firefox, Safari, Edge)
 - Mobile browsers (iOS Safari, Chrome Mobile)
 - Progressive enhancement approach
