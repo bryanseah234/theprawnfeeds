@@ -19,6 +19,7 @@ const failedFeeds = [];
 const feedDataCache = new Map();
 let timelineUpdateTimer = null;
 let timelineHasRendered = false;
+let liveLoadingHideTimer = null;
 
 // View state per section (timeline or cards)
 const sectionViewState = {
@@ -182,6 +183,7 @@ function startLazyLoadFeeds() {
     .then(() => {
       console.log('[RSS Dashboard] All feeds loaded, sorting by recency');
       sortFeedsByRecency();
+      rerenderAllSections();
       updateLiveLoadingStatus();
 
       if (failedFeeds.length > 0) {
@@ -396,20 +398,43 @@ function updateLiveLoadingStatus() {
   const el = document.getElementById('live-loading-status');
   if (!el) return;
 
+  if (liveLoadingHideTimer) {
+    clearTimeout(liveLoadingHideTimer);
+    liveLoadingHideTimer = null;
+  }
+
   if (totalFeeds <= 0) {
-    el.textContent = 'No feeds configured';
+    el.style.display = 'none';
+    el.textContent = '';
     el.classList.remove('complete');
     return;
   }
 
   if (loadedFeeds < totalFeeds) {
+    el.style.display = '';
     el.textContent = `Live loading ${loadedFeeds}/${totalFeeds}…`;
     el.classList.remove('complete');
     return;
   }
 
+  el.style.display = '';
   el.textContent = `Live loading complete ${loadedFeeds}/${totalFeeds} ✓`;
   el.classList.add('complete');
+
+  liveLoadingHideTimer = setTimeout(() => {
+    if (loadedFeeds >= totalFeeds) {
+      el.style.display = 'none';
+    }
+  }, 1200);
+}
+
+/**
+ * Re-render all sections after batch load so users see updated content immediately
+ * when switching tabs (without needing to switch away/back).
+ */
+function rerenderAllSections() {
+  const sections = ['blogs', 'news', 'substack', 'subreddits', 'youtube'];
+  sections.forEach(section => renderSectionView(section));
 }
 
 /**
@@ -473,6 +498,16 @@ function updateFeedCard(card, data, initialLimit = 3) {
 
   const headerEl = card.querySelector('.feed-card-header');
   const category = card.dataset.category;
+  const feedName = card.dataset.name;
+  const feedUrl = card.dataset.url || '';
+  const feedKey = card.dataset.feedKey || getFeedCacheKey({ name: feedName, url: feedUrl });
+
+  // Remove from failed list if this feed now fetched successfully.
+  const failedIndex = failedFeeds.findIndex(f => f.key === feedKey);
+  if (failedIndex !== -1) {
+    failedFeeds.splice(failedIndex, 1);
+    displayOfflineFeeds();
+  }
 
   // Update title link based on category
   const titleLink = card.querySelector('.feed-card-title-link');
@@ -492,8 +527,6 @@ function updateFeedCard(card, data, initialLimit = 3) {
   const itemsEl = card.querySelector('.feed-items');
 
   // Filter out Reddit pinned posts
-  const feedName = card.dataset.name;
-  const feedUrl = card.dataset.url || '';
   const filteredItems = filterPinnedPosts(data.items, feedUrl, feedName);
   const itemsWithin30Days = filterItemsToLast30Days(filteredItems);
   const itemsByDate = sortItemsByDateDesc(itemsWithin30Days);
@@ -502,32 +535,14 @@ function updateFeedCard(card, data, initialLimit = 3) {
   const items = itemsByDate;
 
   if (items.length === 0) {
-    // Treat as offline feed - mark as error for offline section
-    card.classList.add('error');
-    itemsEl.innerHTML = '<li class="error-message">No recent items (last 30 days)</li>';
-    countEl.textContent = '0 items';
-
-    // Track as failed feed for offline section
-    const feedName = card.dataset.name || 'Unknown Feed';
-    const failure = {
-      key: card.dataset.feedKey || getFeedCacheKey({ name: feedName, url: feedUrl }),
-      name: feedName,
-      url: feedUrl,
-      category: card.dataset.category,
-      error: 'No recent items in last 30 days'
-    };
-
-    const alreadyTracked = failedFeeds.some(f => f.key === failure.key);
-    if (!alreadyTracked) {
-      failedFeeds.push(failure);
-    }
-
-    // Treat as offline feed - hide immediately from main grid
-    card.classList.add('error');
-    card.style.display = 'none'; // Immediate hide
-
-    // Update offline section immediately
-    displayOfflineFeeds();
+    // Feed is reachable but has no recent items; this is NOT an offline failure.
+    card.classList.remove('error');
+    card.style.display = '';
+    card.dataset.latestDate = '';
+    card.dataset.allItems = '[]';
+    card.dataset.visibleCount = '0';
+    itemsEl.innerHTML = '<li class="error-message">No posts in the last 30 days</li>';
+    countEl.textContent = '0 recent';
 
     return;
   }
