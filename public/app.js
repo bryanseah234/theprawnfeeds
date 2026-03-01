@@ -146,8 +146,8 @@ async function init() {
   setupViewFab();
   setupModal();
 
-  // Load initial section (YouTube) in timeline view
-  switchSection('youtube');
+  // Load initial section (Blogs) in timeline view
+  switchSection('blogs');
 
   // Hide global loader immediately - feeds will load progressively after this
   const loader = document.getElementById('global-loader');
@@ -354,43 +354,40 @@ async function fetchFeed(feed, card) {
 
 /**
  * Fetch feeds with concurrency limit
- * YouTube feeds have separate concurrency limit but load in parallel with other feeds
+ * YouTube feeds and standard feeds load in parallel with separate limits
  */
 async function fetchFeedsWithConcurrency(feedConfigs, limit) {
+  // Separate YouTube and standard feeds for parallel processing
+  const youtubeFeeds = feedConfigs.filter(cfg => isYouTubeFeedUrl(cfg?.feed?.url));
+  const standardFeeds = feedConfigs.filter(cfg => !isYouTubeFeedUrl(cfg?.feed?.url));
+
+  // Process both queues in parallel with their own concurrency limits
+  await Promise.all([
+    processFeedQueue(standardFeeds, limit),
+    processFeedQueue(youtubeFeeds, YOUTUBE_CONCURRENCY_LIMIT)
+  ]);
+}
+
+/**
+ * Process a queue of feeds with specified concurrency limit
+ */
+async function processFeedQueue(feedConfigs, limit) {
   const pending = [...feedConfigs];
   const executing = [];
-  const youtubeExecuting = [];
 
-  while (pending.length > 0 || executing.length > 0 || youtubeExecuting.length > 0) {
-    // Fill up standard feed slots
+  while (pending.length > 0 || executing.length > 0) {
+    // Fill up to concurrency limit
     while (executing.length < limit && pending.length > 0) {
       const cfg = pending.shift();
-      
-      if (isYouTubeFeedUrl(cfg?.feed?.url)) {
-        // YouTube feed - add to separate queue with its own limit
-        if (youtubeExecuting.length < YOUTUBE_CONCURRENCY_LIMIT) {
-          const promise = fetchFeed(cfg.feed, cfg.card).then(() => {
-            youtubeExecuting.splice(youtubeExecuting.indexOf(promise), 1);
-          });
-          youtubeExecuting.push(promise);
-        } else {
-          // YouTube slots full, put back in queue
-          pending.unshift(cfg);
-          break;
-        }
-      } else {
-        // Standard feed
-        const promise = fetchFeed(cfg.feed, cfg.card).then(() => {
-          executing.splice(executing.indexOf(promise), 1);
-        });
-        executing.push(promise);
-      }
+      const promise = fetchFeed(cfg.feed, cfg.card).then(() => {
+        executing.splice(executing.indexOf(promise), 1);
+      });
+      executing.push(promise);
     }
 
     // Wait for any feed to complete
-    const allExecuting = [...executing, ...youtubeExecuting];
-    if (allExecuting.length > 0) {
-      await Promise.race(allExecuting);
+    if (executing.length > 0) {
+      await Promise.race(executing);
     }
   }
 }
