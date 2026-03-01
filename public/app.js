@@ -5,7 +5,6 @@
 
 // Constants
 const CONCURRENCY_LIMIT = 20;
-const YOUTUBE_CONCURRENCY_LIMIT = 3;
 const API_ENDPOINT = '/api/rss';
 const EXTENDED_FETCH_LIMIT = 20; // Balanced for reliability on mobile while still supporting modal loading
 const MODAL_LOAD_INCREMENT = 10;
@@ -18,7 +17,6 @@ let loadedFeeds = 0;
 let totalFeeds = 0;
 const failedFeeds = [];
 const feedDataCache = new Map();
-const sectionScrollPositions = {};
 let timelineUpdateTimer = null;
 let timelineHasRendered = false;
 
@@ -171,24 +169,20 @@ async function init() {
 function startLazyLoadFeeds() {
   if (!window.feedConfigsPending || window.feedConfigsPending.length === 0) return;
 
-  // Separate YouTube and non-YouTube feeds
-  const youtubeFeeds = window.feedConfigsPending.filter(cfg => isYouTubeFeedUrl(cfg?.feed?.url));
-  const nonYoutubeFeeds = window.feedConfigsPending.filter(cfg => !isYouTubeFeedUrl(cfg?.feed?.url));
-  
-  // Prioritize current section within non-YouTube feeds
-  const currentSectionFeeds = nonYoutubeFeeds.filter(cfg => cfg.section === currentSection);
-  const otherSectionFeeds = nonYoutubeFeeds.filter(cfg => cfg.section !== currentSection);
-  
-  // Final order: current section non-YouTube → other sections non-YouTube → all YouTube
-  const prioritizedFeeds = [...currentSectionFeeds, ...otherSectionFeeds, ...youtubeFeeds];
+  // Prioritize current visible section first, then load all others concurrently.
+  const currentSectionFeeds = window.feedConfigsPending.filter(cfg => cfg.section === currentSection);
+  const otherFeeds = window.feedConfigsPending.filter(cfg => cfg.section !== currentSection);
+  const prioritizedFeeds = [...currentSectionFeeds, ...otherFeeds];
+  const shuffledFeeds = shuffleArray(prioritizedFeeds);
 
-  console.log(`[RSS Dashboard] Starting background fetch of ${prioritizedFeeds.length} feeds (prioritizing ${currentSection} section, YouTube last)`);
+  console.log(`[RSS Dashboard] Starting background fetch of ${shuffledFeeds.length} feeds (full concurrency, randomized)`);
 
   // Kick off the concurrent fetch but don't wait for completion
-  fetchFeedsWithConcurrency(prioritizedFeeds, CONCURRENCY_LIMIT)
+  fetchFeedsWithConcurrency(shuffledFeeds, Math.min(CONCURRENCY_LIMIT, 20))
     .then(() => {
       console.log('[RSS Dashboard] All feeds loaded, sorting by recency');
       sortFeedsByRecency();
+      updateLiveLoadingStatus();
 
       if (failedFeeds.length > 0) {
         displayOfflineFeeds();
@@ -292,6 +286,8 @@ function setupSections() {
   }
 
   totalFeeds = feedConfigs.length;
+  loadedFeeds = 0;
+  updateLiveLoadingStatus();
 
   // Store feed configs for async lazy loading
   window.feedConfigsPending = feedConfigs;
@@ -369,23 +365,51 @@ async function fetchFeed(feed, card) {
     showFeedError(card, error.message, feed);
   } finally {
     loadedFeeds++;
+    updateLiveLoadingStatus();
   }
 }
 
 /**
  * Fetch feeds with concurrency limit
- * All standard feeds complete first, then YouTube feeds load
+ * All feeds are processed in one concurrent queue (including YouTube)
  */
 async function fetchFeedsWithConcurrency(feedConfigs, limit) {
-  // Separate YouTube and standard feeds
-  const youtubeFeeds = feedConfigs.filter(cfg => isYouTubeFeedUrl(cfg?.feed?.url));
-  const standardFeeds = feedConfigs.filter(cfg => !isYouTubeFeedUrl(cfg?.feed?.url));
+  await processFeedQueue(feedConfigs, limit);
+}
 
-  // Load ALL standard feeds first (blogs, news, substack, subreddits)
-  await processFeedQueue(standardFeeds, limit);
-  
-  // Only after standard feeds finish, start YouTube feeds
-  await processFeedQueue(youtubeFeeds, YOUTUBE_CONCURRENCY_LIMIT);
+/**
+ * Fisher-Yates shuffle for randomized loading order.
+ */
+function shuffleArray(items = []) {
+  const arr = [...items];
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
+/**
+ * Update live loading status indicator in header.
+ */
+function updateLiveLoadingStatus() {
+  const el = document.getElementById('live-loading-status');
+  if (!el) return;
+
+  if (totalFeeds <= 0) {
+    el.textContent = 'No feeds configured';
+    el.classList.remove('complete');
+    return;
+  }
+
+  if (loadedFeeds < totalFeeds) {
+    el.textContent = `Live loading ${loadedFeeds}/${totalFeeds}…`;
+    el.classList.remove('complete');
+    return;
+  }
+
+  el.textContent = `Live loading complete ${loadedFeeds}/${totalFeeds} ✓`;
+  el.classList.add('complete');
 }
 
 /**
@@ -409,18 +433,6 @@ async function processFeedQueue(feedConfigs, limit) {
     if (executing.length > 0) {
       await Promise.race(executing);
     }
-  }
-}
-
-/**
- * Check if a feed URL is YouTube's RSS endpoint.
- */
-function isYouTubeFeedUrl(url = '') {
-  try {
-    const parsed = new URL(url);
-    return parsed.hostname.toLowerCase().includes('youtube.com') && parsed.pathname === '/feeds/videos.xml';
-  } catch {
-    return false;
   }
 }
 
@@ -483,7 +495,8 @@ function updateFeedCard(card, data, initialLimit = 3) {
   const feedName = card.dataset.name;
   const feedUrl = card.dataset.url || '';
   const filteredItems = filterPinnedPosts(data.items, feedUrl, feedName);
-  const itemsByDate = sortItemsByDateDesc(filteredItems);
+  const itemsWithin30Days = filterItemsToLast30Days(filteredItems);
+  const itemsByDate = sortItemsByDateDesc(itemsWithin30Days);
 
   // Use date-sorted items for display to keep feeds fresh and consistent
   const items = itemsByDate;
@@ -491,7 +504,7 @@ function updateFeedCard(card, data, initialLimit = 3) {
   if (items.length === 0) {
     // Treat as offline feed - mark as error for offline section
     card.classList.add('error');
-    itemsEl.innerHTML = '<li class="error-message">No items available</li>';
+    itemsEl.innerHTML = '<li class="error-message">No recent items (last 30 days)</li>';
     countEl.textContent = '0 items';
 
     // Track as failed feed for offline section
@@ -501,7 +514,7 @@ function updateFeedCard(card, data, initialLimit = 3) {
       name: feedName,
       url: feedUrl,
       category: card.dataset.category,
-      error: 'No items available'
+      error: 'No recent items in last 30 days'
     };
 
     const alreadyTracked = failedFeeds.some(f => f.key === failure.key);
@@ -589,6 +602,17 @@ function sortItemsByDateDesc(items = []) {
     if (validA) return -1;
     if (validB) return 1;
     return 0;
+  });
+}
+
+/**
+ * Keep only items from the last 30 days with valid publication dates.
+ */
+function filterItemsToLast30Days(items = []) {
+  const cutoff = Date.now() - (30 * MS_PER_DAY);
+  return items.filter((item) => {
+    const ts = new Date(item?.pubDate || '').getTime();
+    return !isNaN(ts) && ts >= cutoff;
   });
 }
 
@@ -965,12 +989,6 @@ function navigateToNextSection() {
  * Switch to a different section
  */
 function switchSection(sectionName) {
-  // Save scroll position of current section
-  const currentSectionEl = document.querySelector(`#${currentSection}-section`);
-  if (currentSectionEl) {
-    sectionScrollPositions[currentSection] = window.scrollY;
-  }
-
   // Update active states and ARIA attributes
   document.querySelectorAll('.section').forEach(s => {
     s.classList.remove('active');
@@ -998,11 +1016,8 @@ function switchSection(sectionName) {
     renderSectionView(sectionName);
     updateTabIndicator(sectionName);
 
-    // Restore scroll position
-    setTimeout(() => {
-      const savedPosition = sectionScrollPositions[sectionName] || 0;
-      window.scrollTo(0, savedPosition);
-    }, 50);
+    // Always reset to top when switching tabs
+    window.scrollTo(0, 0);
   }
 
   // Filter offline feeds by current section
@@ -1457,10 +1472,14 @@ function filterOfflineFeeds(sectionName) {
 
   offlineCount.textContent = relevantFeeds.length;
 
-  offlineGrid.innerHTML = relevantFeeds.map(feed => `
+  offlineGrid.innerHTML = relevantFeeds.map(feed => {
+    const sourceUrl = getSiteUrl(feed.name || '', feed.category, feed.url || '');
+    return `
     <div class="feed-card error offline-card">
       <div class="feed-card-header">
-        <span class="feed-card-title">${escapeHtml(feed.name)}</span>
+        <a href="${escapeHtml(sanitizeUrl(sourceUrl))}" class="feed-card-title-link" target="_blank" rel="noopener noreferrer">
+          <span class="feed-card-title">${escapeHtml(feed.name)}</span>
+        </a>
         <span class="feed-card-count">Error</span>
       </div>
       <ul class="feed-items">
@@ -1469,7 +1488,8 @@ function filterOfflineFeeds(sectionName) {
         <li class="error-message" style="font-size: 11px; color: var(--text-tertiary);">${escapeHtml(feed.error)}</li>
       </ul>
     </div>
-  `).join('');
+  `;
+  }).join('');
 
   offlineSection.style.display = 'block';
 }
@@ -1604,11 +1624,31 @@ function getSiteUrl(name, category, feedUrl) {
     const subName = name.replace(/^r\//i, '');
     siteUrl = `https://www.reddit.com/r/${subName}`;
   } else if (category === 'substack') {
-    // Fallback to feed URL if no better link is available yet
-    siteUrl = feedUrl || '#';
+    // Prefer Substack publication root instead of RSS feed endpoint
+    if (feedUrl) {
+      try {
+        const parsed = new URL(feedUrl);
+        if (parsed.pathname.endsWith('/feed')) {
+          parsed.pathname = parsed.pathname.replace(/\/feed$/, '/');
+          parsed.search = '';
+          siteUrl = parsed.toString();
+        } else {
+          siteUrl = feedUrl;
+        }
+      } catch {
+        siteUrl = feedUrl || '#';
+      }
+    }
   } else if (category === 'blogs' || category === 'news') {
-    // Fallback to feed URL if no better link is available yet
-    siteUrl = feedUrl || '#';
+    // Prefer site origin for standard RSS feeds
+    if (feedUrl) {
+      try {
+        const parsed = new URL(feedUrl);
+        siteUrl = `${parsed.protocol}//${parsed.host}/`;
+      } catch {
+        siteUrl = feedUrl || '#';
+      }
+    }
   }
 
   return siteUrl;

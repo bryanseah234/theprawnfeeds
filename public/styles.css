@@ -149,8 +149,10 @@ body {
 
 .header-center {
   display: flex;
+  flex-direction: column;
   justify-content: center;
   align-items: center;
+  gap: 6px;
   flex: 1;
   min-width: 0;
 }
@@ -211,6 +213,18 @@ body {
 .header-tab.active {
   background: var(--accent-primary);
   color: white;
+}
+
+.live-loading-status {
+  font-size: var(--font-size-sm);
+  color: var(--text-muted);
+  min-height: 18px;
+  text-align: center;
+  user-select: none;
+}
+
+.live-loading-status.complete {
+  color: var(--accent-secondary);
 }
 
 /* Theme Toggle */

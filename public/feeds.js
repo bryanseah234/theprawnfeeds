@@ -888,11 +888,6 @@ const FEEDS = {
   ],
   "substack": [
     {
-      "name": "Longreads",
-      "url": "https://longreads.com/feed",
-      "limit": 5
-    },
-    {
       "name": "A girl, a spiral",
       "url": "https://m00nlight04.substack.com/feed",
       "limit": 5
