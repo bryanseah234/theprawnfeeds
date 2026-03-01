@@ -48,11 +48,11 @@
       <div class="header-center">
         <!-- Tab navigation (Desktop) -->
         <div class="header-tabs desktop-tabs">
-          <button class="header-tab active" data-section="youtube">YouTube</button>
-          <button class="header-tab" data-section="blogs">Blogs</button>
+          <button class="header-tab active" data-section="blogs">Blogs</button>
           <button class="header-tab" data-section="news">News</button>
-          <button class="header-tab" data-section="subreddits">Subreddits</button>
           <button class="header-tab" data-section="substack">Substack</button>
+          <button class="header-tab" data-section="subreddits">Subreddits</button>
+          <button class="header-tab" data-section="youtube">YouTube</button>
         </div>
       </div>
       <div class="header-right">
@@ -71,11 +71,11 @@
     </div>
     <!-- Mobile Navigation Dropdown -->
     <div class="mobile-nav-dropdown" id="mobile-nav-dropdown" aria-hidden="true">
-      <button class="mobile-nav-item active" data-section="youtube">📺 YouTube</button>
-      <button class="mobile-nav-item" data-section="blogs">📝 Blogs</button>
+      <button class="mobile-nav-item active" data-section="blogs">📝 Blogs</button>
       <button class="mobile-nav-item" data-section="news">📰 News</button>
-      <button class="mobile-nav-item" data-section="subreddits">🔗 Subreddits</button>
       <button class="mobile-nav-item" data-section="substack">📰 Substack</button>
+      <button class="mobile-nav-item" data-section="subreddits">🔗 Subreddits</button>
+      <button class="mobile-nav-item" data-section="youtube">📺 YouTube</button>
     </div>
     <!-- Mobile Theme Dropdown -->
     <div class="mobile-theme-dropdown" id="mobile-theme-dropdown" aria-hidden="true">
@@ -88,17 +88,8 @@
   <!-- Swipeable Sections Container -->
   <main class="sections-container" role="main">
     <div class="sections-wrapper" id="sections-wrapper" aria-live="polite">
-      <!-- YouTube Section -->
-      <section class="section active" id="youtube-section" data-section="youtube" role="tabpanel"
-        aria-labelledby="youtube-tab">
-        <div class="section-content">
-          <div class="feed-grid" id="youtube-grid" role="feed" aria-label="YouTube video feeds"></div>
-        </div>
-      </section>
-
       <!-- Blogs Section -->
-      <section class="section" id="blogs-section" data-section="blogs" role="tabpanel" aria-labelledby="blogs-tab"
-        aria-hidden="true">
+      <section class="section active" id="blogs-section" data-section="blogs" role="tabpanel" aria-labelledby="blogs-tab">
         <div class="section-content">
           <div class="feed-grid" id="blogs-grid" role="feed" aria-label="Blog feeds"></div>
         </div>
@@ -112,6 +103,14 @@
         </div>
       </section>
 
+      <!-- Substack Section -->
+      <section class="section" id="substack-section" data-section="substack" role="tabpanel" aria-labelledby="substack-tab"
+        aria-hidden="true">
+        <div class="section-content">
+          <div class="feed-grid" id="substack-grid" role="feed" aria-label="Substack feeds"></div>
+        </div>
+      </section>
+
       <!-- Subreddits Section -->
       <section class="section" id="subreddits-section" data-section="subreddits" role="tabpanel"
         aria-labelledby="subreddits-tab" aria-hidden="true">
@@ -120,11 +119,11 @@
         </div>
       </section>
 
-      <!-- Substack Section -->
-      <section class="section" id="substack-section" data-section="substack" role="tabpanel" aria-labelledby="substack-tab"
-        aria-hidden="true">
+      <!-- YouTube Section -->
+      <section class="section" id="youtube-section" data-section="youtube" role="tabpanel"
+        aria-labelledby="youtube-tab" aria-hidden="true">
         <div class="section-content">
-          <div class="feed-grid" id="substack-grid" role="feed" aria-label="Substack feeds"></div>
+          <div class="feed-grid" id="youtube-grid" role="feed" aria-label="YouTube video feeds"></div>
         </div>
       </section>
     </div>

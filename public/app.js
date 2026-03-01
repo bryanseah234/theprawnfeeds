@@ -4,8 +4,8 @@
  */
 
 // Constants
-const CONCURRENCY_LIMIT = 3;
-const YOUTUBE_CONCURRENCY_LIMIT = 1;
+const CONCURRENCY_LIMIT = 20;
+const YOUTUBE_CONCURRENCY_LIMIT = 3;
 const API_ENDPOINT = '/api/rss';
 const EXTENDED_FETCH_LIMIT = 20; // Balanced for reliability on mobile while still supporting modal loading
 const MODAL_LOAD_INCREMENT = 10;
@@ -13,7 +13,7 @@ const MS_PER_DAY = 1000 * 60 * 60 * 24;
 const SAFE_PROTOCOLS = new Set(['http:', 'https:']);
 
 // State
-let currentSection = 'youtube';
+let currentSection = 'blogs';
 let loadedFeeds = 0;
 let totalFeeds = 0;
 const failedFeeds = [];
@@ -22,11 +22,11 @@ const sectionScrollPositions = {};
 
 // View state per section (timeline or cards)
 const sectionViewState = {
-  youtube: 'timeline',
   blogs: 'timeline',
   news: 'timeline',
+  substack: 'timeline',
   subreddits: 'timeline',
-  substack: 'timeline'
+  youtube: 'timeline'
 };
 
 // Touch handling state
@@ -40,11 +40,11 @@ let isSwiping = false;
  */
 function normalizeFeedsShape(rawFeeds = {}) {
   return {
-    youtube: Array.isArray(rawFeeds?.youtube) ? rawFeeds.youtube : [],
     blogs: Array.isArray(rawFeeds?.blogs) ? rawFeeds.blogs : [],
     news: Array.isArray(rawFeeds?.news) ? rawFeeds.news : [],
+    substack: Array.isArray(rawFeeds?.substack) ? rawFeeds.substack : [],
     subreddits: Array.isArray(rawFeeds?.subreddits) ? rawFeeds.subreddits : [],
-    substack: Array.isArray(rawFeeds?.substack) ? rawFeeds.substack : []
+    youtube: Array.isArray(rawFeeds?.youtube) ? rawFeeds.youtube : []
   };
 }
 
@@ -164,14 +164,20 @@ async function init() {
 /**
  * Start lazy fetching all feeds in background (non-blocking).
  * Feeds populate cards as they complete.
+ * Prioritizes current visible section for faster perceived performance.
  */
 function startLazyLoadFeeds() {
   if (!window.feedConfigsPending || window.feedConfigsPending.length === 0) return;
 
-  console.log(`[RSS Dashboard] Starting background fetch of ${window.feedConfigsPending.length} feeds`);
+  // Prioritize current section feeds - load them first for better UX
+  const currentSectionFeeds = window.feedConfigsPending.filter(cfg => cfg.section === currentSection);
+  const otherFeeds = window.feedConfigsPending.filter(cfg => cfg.section !== currentSection);
+  const prioritizedFeeds = [...currentSectionFeeds, ...otherFeeds];
+
+  console.log(`[RSS Dashboard] Starting background fetch of ${prioritizedFeeds.length} feeds (prioritizing ${currentSection} section)`);
 
   // Kick off the concurrent fetch but don't wait for completion
-  fetchFeedsWithConcurrency(window.feedConfigsPending, CONCURRENCY_LIMIT)
+  fetchFeedsWithConcurrency(prioritizedFeeds, CONCURRENCY_LIMIT)
     .then(() => {
       console.log('[RSS Dashboard] All feeds loaded, sorting by recency');
       sortFeedsByRecency();
@@ -227,16 +233,6 @@ function updateViewFabIcon() {
 function setupSections() {
   const feedConfigs = [];
 
-  // YouTube section
-  if (window.FEEDS?.youtube) {
-    const grid = document.getElementById('youtube-grid');
-    window.FEEDS.youtube.forEach(feed => {
-      const card = createFeedCard(feed.name, 'youtube', feed.url);
-      grid.appendChild(card);
-      feedConfigs.push({ feed, card, grid, section: 'youtube' });
-    });
-  }
-
   // Blogs section
   if (window.FEEDS?.blogs) {
     const grid = document.getElementById('blogs-grid');
@@ -257,6 +253,16 @@ function setupSections() {
     });
   }
 
+  // Substack section
+  if (window.FEEDS?.substack) {
+    const grid = document.getElementById('substack-grid');
+    window.FEEDS.substack.forEach(feed => {
+      const card = createFeedCard(feed.name, 'substack', feed.url);
+      grid.appendChild(card);
+      feedConfigs.push({ feed, card, grid, section: 'substack' });
+    });
+  }
+
   // Subreddits section
   if (window.FEEDS?.subreddits) {
     const grid = document.getElementById('subreddits-grid');
@@ -267,13 +273,13 @@ function setupSections() {
     });
   }
 
-  // Substack section
-  if (window.FEEDS?.substack) {
-    const grid = document.getElementById('substack-grid');
-    window.FEEDS.substack.forEach(feed => {
-      const card = createFeedCard(feed.name, 'substack', feed.url);
+  // YouTube section
+  if (window.FEEDS?.youtube) {
+    const grid = document.getElementById('youtube-grid');
+    window.FEEDS.youtube.forEach(feed => {
+      const card = createFeedCard(feed.name, 'youtube', feed.url);
       grid.appendChild(card);
-      feedConfigs.push({ feed, card, grid, section: 'substack' });
+      feedConfigs.push({ feed, card, grid, section: 'youtube' });
     });
   }
 
@@ -918,7 +924,7 @@ function setupKeyboardNavigation() {
  * Navigate to previous section
  */
 function navigateToPreviousSection() {
-  const sections = ['youtube', 'blogs', 'news', 'subreddits', 'substack'];
+  const sections = ['blogs', 'news', 'substack', 'subreddits', 'youtube'];
   const currentIndex = sections.indexOf(currentSection);
 
   if (currentIndex > 0) {
@@ -930,7 +936,7 @@ function navigateToPreviousSection() {
  * Navigate to next section
  */
 function navigateToNextSection() {
-  const sections = ['youtube', 'blogs', 'news', 'subreddits', 'substack'];
+  const sections = ['blogs', 'news', 'substack', 'subreddits', 'youtube'];
   const currentIndex = sections.indexOf(currentSection);
 
   if (currentIndex < sections.length - 1) {
@@ -1182,11 +1188,11 @@ function getSectionFeeds(section) {
   if (!window.FEEDS) return null;
 
   const sectionMap = {
-    'youtube': window.FEEDS.youtube,
     'blogs': window.FEEDS.blogs,
     'news': window.FEEDS.news,
+    'substack': window.FEEDS.substack,
     'subreddits': window.FEEDS.subreddits,
-    'substack': window.FEEDS.substack
+    'youtube': window.FEEDS.youtube
   };
 
   return sectionMap[section];
@@ -1407,11 +1413,11 @@ function filterOfflineFeeds(sectionName) {
 
   // Map section names to categories
   const sectionCategories = {
-    'youtube': ['youtube'],
     'blogs': ['blogs'],
     'news': ['news'],
+    'substack': ['substack'],
     'subreddits': ['subreddits'],
-    'substack': ['substack']
+    'youtube': ['youtube']
   };
 
   const relevantCategories = sectionCategories[sectionName] || [];
@@ -1592,7 +1598,7 @@ function getSiteUrl(name, category, feedUrl) {
  * Sort feed cards by recency within each section
  */
 function sortFeedsByRecency() {
-  const sections = ['youtube', 'blogs', 'news', 'subreddits', 'substack'];
+  const sections = ['blogs', 'news', 'substack', 'subreddits', 'youtube'];
 
   sections.forEach(section => {
     const grid = document.getElementById(`${section}-grid`);
