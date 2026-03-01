@@ -5,6 +5,7 @@
 
 // Constants
 const CONCURRENCY_LIMIT = 3;
+const YOUTUBE_CONCURRENCY_LIMIT = 1;
 const API_ENDPOINT = '/api/rss';
 const EXTENDED_FETCH_LIMIT = 20; // Balanced for reliability on mobile while still supporting modal loading
 const MODAL_LOAD_INCREMENT = 10;
@@ -323,12 +324,34 @@ async function fetchFeed(feed, card) {
  * Fetch feeds with concurrency limit
  */
 async function fetchFeedsWithConcurrency(feedConfigs, limit) {
-  const queue = [...feedConfigs];
+  const standardQueue = [];
+  const youtubeQueue = [];
+
+  for (const cfg of feedConfigs) {
+    if (isYouTubeFeedUrl(cfg?.feed?.url)) {
+      youtubeQueue.push(cfg);
+    } else {
+      standardQueue.push(cfg);
+    }
+  }
+
+  // Load non-YouTube feeds first at normal concurrency.
+  await processFeedQueue(standardQueue, limit);
+
+  // Then load YouTube feeds with gentler concurrency to reduce transient upstream failures.
+  await processFeedQueue(youtubeQueue, YOUTUBE_CONCURRENCY_LIMIT);
+}
+
+/**
+ * Process a queue of feeds with a specific concurrency limit.
+ */
+async function processFeedQueue(queue, limit) {
+  const pending = [...queue];
   const executing = [];
 
-  while (queue.length > 0 || executing.length > 0) {
-    while (executing.length < limit && queue.length > 0) {
-      const { feed, card } = queue.shift();
+  while (pending.length > 0 || executing.length > 0) {
+    while (executing.length < limit && pending.length > 0) {
+      const { feed, card } = pending.shift();
       const promise = fetchFeed(feed, card).then(() => {
         executing.splice(executing.indexOf(promise), 1);
       });
@@ -338,6 +361,18 @@ async function fetchFeedsWithConcurrency(feedConfigs, limit) {
     if (executing.length > 0) {
       await Promise.race(executing);
     }
+  }
+}
+
+/**
+ * Check if a feed URL is YouTube's RSS endpoint.
+ */
+function isYouTubeFeedUrl(url = '') {
+  try {
+    const parsed = new URL(url);
+    return parsed.hostname.toLowerCase().includes('youtube.com') && parsed.pathname === '/feeds/videos.xml';
+  } catch {
+    return false;
   }
 }
 

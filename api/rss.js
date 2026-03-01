@@ -9,6 +9,7 @@ const CACHE_TTL = 60 * 60 * 1000; // 60 minutes in milliseconds
 const FETCH_TIMEOUT_MS = 25000;
 const FETCH_RETRIES = 1;
 const YOUTUBE_FETCH_RETRIES = 4;
+const YOUTUBE_SHORTS_PATTERN = /(^|\s)#shorts?\b|\bshorts?\b/i;
 const ALLOWED_PROTOCOLS = new Set(['http:', 'https:']);
 const BLOCKED_HOSTS = new Set([
   'localhost',
@@ -215,6 +216,58 @@ function isYoutubeFeedUrl(feedUrl) {
 }
 
 /**
+ * Extract Atom entry link reliably across shape variants.
+ * @param {object} entry
+ * @returns {string}
+ */
+function getAtomEntryLink(entry = {}) {
+  if (!entry.link) return '';
+
+  if (typeof entry.link === 'string') {
+    return entry.link;
+  }
+
+  if (Array.isArray(entry.link)) {
+    const alternate = entry.link.find(l => l?.['@_rel'] === 'alternate' || !l?.['@_rel']);
+    if (alternate) {
+      return alternate?.['@_href'] || '';
+    }
+
+    return entry.link[0]?.['@_href'] || '';
+  }
+
+  return entry.link['@_href'] || '';
+}
+
+/**
+ * Heuristic YouTube Shorts detection for feed entries.
+ * We intentionally filter obvious Shorts signals while preserving unknown cases.
+ * @param {object} entry
+ * @param {string} title
+ * @param {string} link
+ * @returns {boolean}
+ */
+function isLikelyYoutubeShort(entry, title, link) {
+  const normalizedTitle = String(title || '').trim();
+  const normalizedLink = String(link || '').trim().toLowerCase();
+  const mediaDescription = String(entry?.['media:group']?.['media:description'] || '').trim();
+
+  if (normalizedLink.includes('/shorts/')) {
+    return true;
+  }
+
+  if (YOUTUBE_SHORTS_PATTERN.test(normalizedTitle)) {
+    return true;
+  }
+
+  if (YOUTUBE_SHORTS_PATTERN.test(mediaDescription)) {
+    return true;
+  }
+
+  return false;
+}
+
+/**
  * Extract thumbnail URL from RSS item
  * 
  * Extraction priority order:
@@ -317,7 +370,7 @@ function parseRss2(feed, limit) {
  * @param {number} limit - Maximum number of items
  * @returns {object} - Object with title and items
  */
-function parseAtom(feed, limit) {
+function parseAtom(feed, limit, options = {}) {
   const atomFeed = feed.feed;
   if (!atomFeed) return { title: 'Unknown Feed', items: [] };
   
@@ -329,25 +382,16 @@ function parseAtom(feed, limit) {
     entries = [entries];
   }
   
-  const parsedItems = entries.map(entry => {
-    // Handle different link formats in Atom
-    let link = '';
-    if (entry.link) {
-      if (typeof entry.link === 'string') {
-        link = entry.link;
-      } else if (Array.isArray(entry.link)) {
-        // Find alternate link or first available link
-        const alternate = entry.link.find(l => l['@_rel'] === 'alternate' || !l['@_rel']);
-        if (alternate) {
-          link = alternate['@_href'] || alternate;
-        } else if (entry.link[0]) {
-          link = entry.link[0]['@_href'] || entry.link[0];
-        }
-      } else if (entry.link['@_href']) {
-        link = entry.link['@_href'];
-      }
+  const parsedItems = entries.flatMap(entry => {
+    const title = stripHtml(
+      typeof entry.title === 'string' ? entry.title : (entry.title?.['#text'] || 'No title')
+    );
+    const link = getAtomEntryLink(entry);
+
+    if (options.filterYoutubeShorts && isLikelyYoutubeShort(entry, title, link)) {
+      return [];
     }
-    
+
     // Handle different content formats
     let text = '';
     if (entry.content) {
@@ -355,14 +399,14 @@ function parseAtom(feed, limit) {
     } else if (entry.summary) {
       text = typeof entry.summary === 'string' ? entry.summary : (entry.summary['#text'] || '');
     }
-    
-    return {
-      title: stripHtml(typeof entry.title === 'string' ? entry.title : (entry.title?.['#text'] || 'No title')),
+
+    return [{
+      title,
       link: link,
       pubDate: parseDate(entry.published || entry.updated || entry['dc:date']),
       text: stripHtml(text),
       thumbnail: extractThumbnail(entry)
-    };
+    }];
   });
 
   return { title, items: sortItemsByDateDesc(parsedItems).slice(0, limit) };
@@ -432,7 +476,9 @@ async function fetchFeed(feedUrl, limit) {
       if (feed.rss) {
         result = parseRss2(feed, limit);
       } else if (feed.feed) {
-        result = parseAtom(feed, limit);
+        result = parseAtom(feed, limit, {
+          filterYoutubeShorts: isYoutube
+        });
       } else if (feed['rdf:RDF']) {
         // RSS 1.0 / RDF format
         const rdf = feed['rdf:RDF'];
