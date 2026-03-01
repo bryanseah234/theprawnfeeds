@@ -171,12 +171,18 @@ async function init() {
 function startLazyLoadFeeds() {
   if (!window.feedConfigsPending || window.feedConfigsPending.length === 0) return;
 
-  // Prioritize current section feeds - load them first for better UX
-  const currentSectionFeeds = window.feedConfigsPending.filter(cfg => cfg.section === currentSection);
-  const otherFeeds = window.feedConfigsPending.filter(cfg => cfg.section !== currentSection);
-  const prioritizedFeeds = [...currentSectionFeeds, ...otherFeeds];
+  // Separate YouTube and non-YouTube feeds
+  const youtubeFeeds = window.feedConfigsPending.filter(cfg => isYouTubeFeedUrl(cfg?.feed?.url));
+  const nonYoutubeFeeds = window.feedConfigsPending.filter(cfg => !isYouTubeFeedUrl(cfg?.feed?.url));
+  
+  // Prioritize current section within non-YouTube feeds
+  const currentSectionFeeds = nonYoutubeFeeds.filter(cfg => cfg.section === currentSection);
+  const otherSectionFeeds = nonYoutubeFeeds.filter(cfg => cfg.section !== currentSection);
+  
+  // Final order: current section non-YouTube → other sections non-YouTube → all YouTube
+  const prioritizedFeeds = [...currentSectionFeeds, ...otherSectionFeeds, ...youtubeFeeds];
 
-  console.log(`[RSS Dashboard] Starting background fetch of ${prioritizedFeeds.length} feeds (prioritizing ${currentSection} section)`);
+  console.log(`[RSS Dashboard] Starting background fetch of ${prioritizedFeeds.length} feeds (prioritizing ${currentSection} section, YouTube last)`);
 
   // Kick off the concurrent fetch but don't wait for completion
   fetchFeedsWithConcurrency(prioritizedFeeds, CONCURRENCY_LIMIT)
@@ -368,18 +374,18 @@ async function fetchFeed(feed, card) {
 
 /**
  * Fetch feeds with concurrency limit
- * YouTube feeds and standard feeds load in parallel with separate limits
+ * All standard feeds complete first, then YouTube feeds load
  */
 async function fetchFeedsWithConcurrency(feedConfigs, limit) {
-  // Separate YouTube and standard feeds for parallel processing
+  // Separate YouTube and standard feeds
   const youtubeFeeds = feedConfigs.filter(cfg => isYouTubeFeedUrl(cfg?.feed?.url));
   const standardFeeds = feedConfigs.filter(cfg => !isYouTubeFeedUrl(cfg?.feed?.url));
 
-  // Process both queues in parallel with their own concurrency limits
-  await Promise.all([
-    processFeedQueue(standardFeeds, limit),
-    processFeedQueue(youtubeFeeds, YOUTUBE_CONCURRENCY_LIMIT)
-  ]);
+  // Load ALL standard feeds first (blogs, news, substack, subreddits)
+  await processFeedQueue(standardFeeds, limit);
+  
+  // Only after standard feeds finish, start YouTube feeds
+  await processFeedQueue(youtubeFeeds, YOUTUBE_CONCURRENCY_LIMIT);
 }
 
 /**
