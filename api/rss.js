@@ -6,6 +6,9 @@ const net = require('node:net');
 // In-memory cache with 60-minute TTL
 const cache = new Map();
 const CACHE_TTL = 60 * 60 * 1000; // 60 minutes in milliseconds
+const FETCH_TIMEOUT_MS = 25000;
+const FETCH_RETRIES = 1;
+const YOUTUBE_FETCH_RETRIES = 4;
 const ALLOWED_PROTOCOLS = new Set(['http:', 'https:']);
 const BLOCKED_HOSTS = new Set([
   'localhost',
@@ -159,6 +162,59 @@ function parseDate(dateStr) {
 }
 
 /**
+ * Choose best-available RSS publication date field.
+ * @param {object} item
+ * @returns {string}
+ */
+function getRssItemDate(item = {}) {
+  return (
+    item.pubDate ||
+    item['dc:date'] ||
+    item.published ||
+    item.updated ||
+    item['atom:published'] ||
+    item['atom:updated'] ||
+    ''
+  );
+}
+
+/**
+ * Sort parsed items by publication date (newest first).
+ * Invalid/missing dates are placed last.
+ * @param {Array} items
+ * @returns {Array}
+ */
+function sortItemsByDateDesc(items = []) {
+  return [...items].sort((a, b) => {
+    const ta = new Date(a?.pubDate || '').getTime();
+    const tb = new Date(b?.pubDate || '').getTime();
+    const va = !Number.isNaN(ta);
+    const vb = !Number.isNaN(tb);
+
+    if (va && vb) return tb - ta;
+    if (va) return -1;
+    if (vb) return 1;
+    return 0;
+  });
+}
+
+/**
+ * Identify YouTube feed endpoints that are known to intermittently return
+ * transient 404/5xx responses.
+ * @param {string} feedUrl
+ * @returns {boolean}
+ */
+function isYoutubeFeedUrl(feedUrl) {
+  try {
+    const parsed = new URL(feedUrl);
+    const host = parsed.hostname.toLowerCase();
+    return host.includes('youtube.com') && parsed.pathname === '/feeds/videos.xml';
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Extract thumbnail URL from RSS item
  * 
  * Extraction priority order:
@@ -244,15 +300,15 @@ function parseRss2(feed, limit) {
     items = [items];
   }
   
-  const parsedItems = items.slice(0, limit).map(item => ({
+  const parsedItems = items.map(item => ({
     title: stripHtml(item.title || 'No title'),
     link: item.link || '',
-    pubDate: parseDate(item.pubDate),
+    pubDate: parseDate(getRssItemDate(item)),
     text: stripHtml(item.description || item['content:encoded'] || ''),
     thumbnail: extractThumbnail(item)
   }));
-  
-  return { title, items: parsedItems };
+
+  return { title, items: sortItemsByDateDesc(parsedItems).slice(0, limit) };
 }
 
 /**
@@ -273,7 +329,7 @@ function parseAtom(feed, limit) {
     entries = [entries];
   }
   
-  const parsedItems = entries.slice(0, limit).map(entry => {
+  const parsedItems = entries.map(entry => {
     // Handle different link formats in Atom
     let link = '';
     if (entry.link) {
@@ -303,13 +359,13 @@ function parseAtom(feed, limit) {
     return {
       title: stripHtml(typeof entry.title === 'string' ? entry.title : (entry.title?.['#text'] || 'No title')),
       link: link,
-      pubDate: parseDate(entry.updated || entry.published),
+      pubDate: parseDate(entry.published || entry.updated || entry['dc:date']),
       text: stripHtml(text),
       thumbnail: extractThumbnail(entry)
     };
   });
-  
-  return { title, items: parsedItems };
+
+  return { title, items: sortItemsByDateDesc(parsedItems).slice(0, limit) };
 }
 
 /**
@@ -329,73 +385,108 @@ async function fetchFeed(feedUrl, limit) {
   
   console.log(`[Fetching] ${feedUrl}`);
   
-  // Create abort controller for timeout
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 15000);
-  
-  try {
-    const response = await fetch(feedUrl, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (compatible; RSS Reader/1.0)',
-        'Accept': 'application/rss+xml, application/xml, application/atom+xml, text/xml, */*'
-      },
-      signal: controller.signal
-    });
-    
-    clearTimeout(timeoutId);
-  
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-    }
-  
-    const xml = await response.text();
-  
-    const parser = new XMLParser({
-      ignoreAttributes: false,
-      attributeNamePrefix: '@_'
-    });
-  
-    const feed = parser.parse(xml);
-  
-    let result;
-  
-    // Detect feed type and parse accordingly
-    if (feed.rss) {
-      result = parseRss2(feed, limit);
-    } else if (feed.feed) {
-      result = parseAtom(feed, limit);
-    } else if (feed['rdf:RDF']) {
-      // RSS 1.0 / RDF format
-      const rdf = feed['rdf:RDF'];
-      const title = rdf.channel?.title || 'Unknown Feed';
-      let items = rdf.item || [];
-      if (!Array.isArray(items)) items = [items];
-    
-      result = {
-        title,
-        items: items.slice(0, limit).map(item => ({
+  let lastError = null;
+  const isYoutube = isYoutubeFeedUrl(feedUrl);
+  const maxRetries = isYoutube ? YOUTUBE_FETCH_RETRIES : FETCH_RETRIES;
+
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+
+    try {
+      const response = await fetch(feedUrl, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (compatible; RSS Reader/1.0)',
+          'Accept': 'application/rss+xml, application/xml, application/atom+xml, text/xml, */*',
+          'Accept-Language': 'en-US,en;q=0.9'
+        },
+        signal: controller.signal
+      });
+
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        const isRetriableHttp = response.status === 429 || (response.status >= 500 && response.status <= 599);
+        const isTransientYoutube404 = isYoutube && response.status === 404;
+
+        if ((isRetriableHttp || isTransientYoutube404) && attempt < maxRetries) {
+          await new Promise(resolve => setTimeout(resolve, 350 * (attempt + 1)));
+          continue;
+        }
+
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const xml = await response.text();
+
+      const parser = new XMLParser({
+        ignoreAttributes: false,
+        attributeNamePrefix: '@_'
+      });
+
+      const feed = parser.parse(xml);
+
+      let result;
+
+      // Detect feed type and parse accordingly
+      if (feed.rss) {
+        result = parseRss2(feed, limit);
+      } else if (feed.feed) {
+        result = parseAtom(feed, limit);
+      } else if (feed['rdf:RDF']) {
+        // RSS 1.0 / RDF format
+        const rdf = feed['rdf:RDF'];
+        const title = rdf.channel?.title || 'Unknown Feed';
+        let items = rdf.item || [];
+        if (!Array.isArray(items)) items = [items];
+
+        const parsedItems = items.map(item => ({
           title: stripHtml(item.title || 'No title'),
           link: item.link || '',
-          pubDate: parseDate(item['dc:date'] || item.pubDate),
+          pubDate: parseDate(getRssItemDate(item)),
           text: stripHtml(item.description || ''),
           thumbnail: extractThumbnail(item)
-        }))
-      };
-    } else {
-      throw new Error('Unknown feed format');
+        }));
+
+        result = {
+          title,
+          items: sortItemsByDateDesc(parsedItems).slice(0, limit)
+        };
+      } else {
+        throw new Error('Unknown feed format');
+      }
+
+      // Update cache
+      cache.set(cacheKey, {
+        timestamp: Date.now(),
+        data: result
+      });
+
+      console.log(`[Parsed] ${feedUrl} - ${result.items.length} items`);
+      return result;
+    } catch (error) {
+      clearTimeout(timeoutId);
+      lastError = error;
+
+      const retriableNetworkError = error?.name === 'AbortError' || /ECONNRESET|ETIMEDOUT|EAI_AGAIN|fetch failed/i.test(error?.message || '');
+      if (retriableNetworkError && attempt < maxRetries) {
+        await new Promise(resolve => setTimeout(resolve, 350 * (attempt + 1)));
+        continue;
+      }
+
+      throw error;
     }
-  
-    // Update cache
-    cache.set(cacheKey, {
-      timestamp: Date.now(),
-      data: result
-    });
-  
-    console.log(`[Parsed] ${feedUrl} - ${result.items.length} items`);
-    return result;
-  } finally {
-    clearTimeout(timeoutId);
   }
+
+  // Last-resort resilience: if we have stale cached data, return it instead of
+  // failing hard. This prevents temporary upstream outages from marking feeds
+  // as offline immediately.
+  if (cached?.data?.items?.length) {
+    console.warn(`[Stale Cache Fallback] ${feedUrl}`);
+    return cached.data;
+  }
+
+  throw lastError || new Error('Failed to fetch feed');
 }
 
 /**

@@ -200,11 +200,11 @@
                 </div>
             </section>
 
-            <!-- Security & Tech Section -->
+            <!-- News Section -->
             <section class="feed-section">
-                <h2 class="section-title">🔒 Security & Tech</h2>
+                <h2 class="section-title">📰 News</h2>
                 <div class="grid">
-                    {% for section in config.sections if "security" in (section.title|lower) or "tech" in (section.title|lower) %}
+                    {% for section in config.sections if "security" in (section.title|lower) or "tech" in (section.title|lower) or "news" in (section.title|lower) %}
                         {% for feed in section.feeds %}
                             {% if not feed.error %}
                                 {{ render_feed_widget(feed, section.title) }}

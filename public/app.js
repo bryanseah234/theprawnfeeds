@@ -6,7 +6,7 @@
 // Constants
 const CONCURRENCY_LIMIT = 3;
 const API_ENDPOINT = '/api/rss';
-const EXTENDED_FETCH_LIMIT = 50; // Increased to support infinite scroll in modal
+const EXTENDED_FETCH_LIMIT = 20; // Balanced for reliability on mobile while still supporting modal loading
 const MODAL_LOAD_INCREMENT = 10;
 const MS_PER_DAY = 1000 * 60 * 60 * 24;
 const SAFE_PROTOCOLS = new Set(['http:', 'https:']);
@@ -18,19 +18,12 @@ let totalFeeds = 0;
 const failedFeeds = [];
 const feedDataCache = new Map();
 const sectionScrollPositions = {};
-const sectionSearchState = {
-  youtube: '',
-  blogs: '',
-  security: '',
-  subreddits: '',
-  twitch: ''
-};
 
 // View state per section (timeline or cards)
 const sectionViewState = {
   youtube: 'timeline',
   blogs: 'timeline',
-  security: 'timeline',
+  news: 'timeline',
   subreddits: 'timeline',
   twitch: 'timeline'
 };
@@ -48,7 +41,7 @@ function normalizeFeedsShape(rawFeeds = {}) {
   return {
     youtube: Array.isArray(rawFeeds?.youtube) ? rawFeeds.youtube : [],
     blogs: Array.isArray(rawFeeds?.blogs) ? rawFeeds.blogs : [],
-    security: Array.isArray(rawFeeds?.security) ? rawFeeds.security : [],
+    news: Array.isArray(rawFeeds?.news) ? rawFeeds.news : [],
     subreddits: Array.isArray(rawFeeds?.subreddits) ? rawFeeds.subreddits : [],
     twitch: Array.isArray(rawFeeds?.twitch) ? rawFeeds.twitch : []
   };
@@ -149,7 +142,7 @@ async function init() {
   setupMobileMenu();
   setupTouchNavigation();
   setupKeyboardNavigation();
-  setupSectionTools();
+  setupViewFab();
   setupModal();
 
   // Load initial section (YouTube) in timeline view
@@ -159,84 +152,36 @@ async function init() {
 }
 
 /**
- * Setup section-level controls (explicit view toggle + search)
+ * Setup floating view mode toggle FAB.
  */
-function setupSectionTools() {
-  const viewToggleBtn = document.getElementById('view-toggle-btn');
-  const sectionSearch = document.getElementById('section-search');
-  const sectionSearchClear = document.getElementById('section-search-clear');
+function setupViewFab() {
+  const fab = document.getElementById('view-fab');
+  if (!fab) return;
 
-  if (viewToggleBtn) {
-    viewToggleBtn.addEventListener('click', () => {
-      sectionViewState[currentSection] =
-        sectionViewState[currentSection] === 'timeline' ? 'cards' : 'timeline';
-      renderSectionView(currentSection);
-      updateTabIndicator(currentSection);
-      updateSectionTools();
-    });
-  }
+  fab.addEventListener('click', () => {
+    sectionViewState[currentSection] =
+      sectionViewState[currentSection] === 'timeline' ? 'cards' : 'timeline';
 
-  if (sectionSearch) {
-    sectionSearch.addEventListener('input', (e) => {
-      const value = (e.target.value || '').trimStart();
-      sectionSearchState[currentSection] = value;
-      renderSectionView(currentSection);
-      updateSectionTools();
-    });
+    renderSectionView(currentSection);
+    updateTabIndicator(currentSection);
+    updateViewFabIcon();
+  });
 
-    sectionSearch.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape') {
-        const hasQuery = Boolean((sectionSearchState[currentSection] || '').trim());
-        if (hasQuery) {
-          e.preventDefault();
-          sectionSearchState[currentSection] = '';
-          sectionSearch.value = '';
-          renderSectionView(currentSection);
-          updateSectionTools();
-        }
-      }
-    });
-  }
-
-  if (sectionSearchClear && sectionSearch) {
-    sectionSearchClear.addEventListener('click', () => {
-      sectionSearchState[currentSection] = '';
-      sectionSearch.value = '';
-      renderSectionView(currentSection);
-      updateSectionTools();
-      sectionSearch.focus();
-    });
-  }
-
-  updateSectionTools();
+  updateViewFabIcon();
 }
 
 /**
- * Update the section tool controls to reflect active section state.
+ * Keep floating view FAB icon/label in sync with current section mode.
  */
-function updateSectionTools() {
-  const viewToggleBtn = document.getElementById('view-toggle-btn');
-  const sectionSearch = document.getElementById('section-search');
-  const sectionSearchClear = document.getElementById('section-search-clear');
+function updateViewFabIcon() {
+  const fab = document.getElementById('view-fab');
+  if (!fab) return;
 
-  if (viewToggleBtn) {
-    const isTimeline = sectionViewState[currentSection] === 'timeline';
-    viewToggleBtn.textContent = isTimeline ? '📜 Timeline' : '📇 Cards';
-    viewToggleBtn.setAttribute(
-      'aria-label',
-      isTimeline ? 'Switch to card view' : 'Switch to timeline view'
-    );
-  }
-
-  if (sectionSearch) {
-    sectionSearch.value = sectionSearchState[currentSection] || '';
-    sectionSearch.setAttribute('placeholder', `Filter ${currentSection}...`);
-  }
-
-  if (sectionSearchClear) {
-    const hasQuery = Boolean((sectionSearchState[currentSection] || '').trim());
-    sectionSearchClear.hidden = !hasQuery;
-  }
+  const isTimeline = sectionViewState[currentSection] === 'timeline';
+  // Icon shows the mode users can switch to
+  fab.textContent = isTimeline ? '📇' : '📜';
+  fab.setAttribute('aria-label', isTimeline ? 'Switch to card view' : 'Switch to timeline view');
+  fab.setAttribute('title', isTimeline ? 'Cards view' : 'Timeline view');
 }
 
 /**
@@ -265,13 +210,13 @@ async function setupSections() {
     });
   }
 
-  // Security section
-  if (window.FEEDS?.security) {
-    const grid = document.getElementById('security-grid');
-    window.FEEDS.security.forEach(feed => {
-      const card = createFeedCard(feed.name, 'security', feed.url);
+  // News section
+  if (window.FEEDS?.news) {
+    const grid = document.getElementById('news-grid');
+    window.FEEDS.news.forEach(feed => {
+      const card = createFeedCard(feed.name, 'news', feed.url);
       grid.appendChild(card);
-      feedConfigs.push({ feed, card, grid, section: 'security' });
+      feedConfigs.push({ feed, card, grid, section: 'news' });
     });
   }
 
@@ -437,10 +382,10 @@ function updateFeedCard(card, data, initialLimit = 3) {
   // Update title link based on category
   const titleLink = card.querySelector('.feed-card-title-link');
   if (titleLink) {
-    // For blogs/security, prefer site_url from backend if available
+    // For blogs/news, prefer site_url from backend if available
     let siteUrl = getSiteUrl(card.dataset.name, category, card.dataset.url);
 
-    if ((category === 'blogs' || category === 'security') && data.site_url) {
+    if ((category === 'blogs' || category === 'news') && data.site_url) {
       siteUrl = data.site_url;
     }
 
@@ -455,9 +400,10 @@ function updateFeedCard(card, data, initialLimit = 3) {
   const feedName = card.dataset.name;
   const feedUrl = card.dataset.url || '';
   const filteredItems = filterPinnedPosts(data.items, feedUrl, feedName);
+  const itemsByDate = sortItemsByDateDesc(filteredItems);
 
-  // Use filtered items for display
-  const items = filteredItems;
+  // Use date-sorted items for display to keep feeds fresh and consistent
+  const items = itemsByDate;
 
   if (items.length === 0) {
     // Treat as offline feed - mark as error for offline section
@@ -543,6 +489,24 @@ function updateFeedCard(card, data, initialLimit = 3) {
   }
 
   countEl.textContent = `${initialItems.length} of ${items.length}`;
+}
+
+/**
+ * Sort feed items by publication date, newest first.
+ * Invalid dates are pushed to the end while preserving relative order.
+ */
+function sortItemsByDateDesc(items = []) {
+  return [...items].sort((a, b) => {
+    const dateA = new Date(a?.pubDate || '').getTime();
+    const dateB = new Date(b?.pubDate || '').getTime();
+    const validA = !isNaN(dateA);
+    const validB = !isNaN(dateB);
+
+    if (validA && validB) return dateB - dateA;
+    if (validA) return -1;
+    if (validB) return 1;
+    return 0;
+  });
 }
 
 /**
@@ -894,7 +858,7 @@ function setupKeyboardNavigation() {
  * Navigate to previous section
  */
 function navigateToPreviousSection() {
-  const sections = ['youtube', 'blogs', 'security', 'subreddits', 'twitch'];
+  const sections = ['youtube', 'blogs', 'news', 'subreddits', 'twitch'];
   const currentIndex = sections.indexOf(currentSection);
 
   if (currentIndex > 0) {
@@ -906,7 +870,7 @@ function navigateToPreviousSection() {
  * Navigate to next section
  */
 function navigateToNextSection() {
-  const sections = ['youtube', 'blogs', 'security', 'subreddits', 'twitch'];
+  const sections = ['youtube', 'blogs', 'news', 'subreddits', 'twitch'];
   const currentIndex = sections.indexOf(currentSection);
 
   if (currentIndex < sections.length - 1) {
@@ -957,7 +921,7 @@ function switchSection(sectionName) {
 
   // Filter offline feeds by current section
   filterOfflineFeeds(sectionName);
-  updateSectionTools();
+  updateViewFabIcon();
 }
 
 /**
@@ -1006,9 +970,8 @@ function renderTimelineView(section, grid) {
   grid.classList.add('timeline-mode');
 
   // Get timeline articles (last 30 days, sorted chronologically)
-  const query = (sectionSearchState[section] || '').trim().toLowerCase();
   const allArticles = getTimelineArticles(feeds);
-  const articles = query ? allArticles.filter(article => articleMatchesQuery(article, query)) : allArticles;
+  const articles = allArticles;
 
   if (articles.length === 0) {
     grid.innerHTML = '<div class="timeline-empty"><div class="timeline-empty-icon">📭</div><h3>No recent articles</h3><p>No articles from the last 30 days</p></div>';
@@ -1050,16 +1013,6 @@ function renderTimelineView(section, grid) {
   `;
 
   grid.innerHTML = timelineHTML;
-}
-
-function articleMatchesQuery(article, query) {
-  const haystack = [
-    article?.title,
-    article?.text,
-    article?.sourceName
-  ].filter(Boolean).join(' ').toLowerCase();
-
-  return haystack.includes(query);
 }
 
 /**
@@ -1129,8 +1082,6 @@ function renderCardView(section, grid) {
 
   const feeds = getSectionFeeds(section);
   if (!feeds) return;
-
-  const query = (sectionSearchState[section] || '').trim().toLowerCase();
   let renderedCount = 0;
 
   feeds.forEach(feed => {
@@ -1149,11 +1100,6 @@ function renderCardView(section, grid) {
     // Populate with cached data if available
     const cachedData = feedDataCache.get(feedKey);
 
-    // Apply source/article filtering in card view
-    if (query && !feedMatchesQuery(feed, cachedData, query)) {
-      return;
-    }
-
     if (cachedData) {
       updateFeedCard(card, cachedData, feed.limit);
     }
@@ -1165,19 +1111,8 @@ function renderCardView(section, grid) {
   sortFeedsByRecencyInGrid(grid);
 
   if (renderedCount === 0) {
-    grid.innerHTML = '<div class="timeline-empty"><div class="timeline-empty-icon">🔎</div><h3>No matching feeds</h3><p>Try a different filter</p></div>';
+    grid.innerHTML = '<div class="timeline-empty"><div class="timeline-empty-icon">📭</div><h3>No feeds available</h3><p>Check back later for updates</p></div>';
   }
-}
-
-function feedMatchesQuery(feed, cachedData, query) {
-  const sourceMatch = String(feed?.name || '').toLowerCase().includes(query);
-  if (sourceMatch) return true;
-
-  const items = cachedData?.items || [];
-  return items.some(item => {
-    const haystack = [item?.title, item?.text].filter(Boolean).join(' ').toLowerCase();
-    return haystack.includes(query);
-  });
 }
 
 /**
@@ -1189,7 +1124,7 @@ function getSectionFeeds(section) {
   const sectionMap = {
     'youtube': window.FEEDS.youtube,
     'blogs': window.FEEDS.blogs,
-    'security': window.FEEDS.security,
+    'news': window.FEEDS.news,
     'subreddits': window.FEEDS.subreddits,
     'twitch': window.FEEDS.twitch
   };
@@ -1414,7 +1349,7 @@ function filterOfflineFeeds(sectionName) {
   const sectionCategories = {
     'youtube': ['youtube'],
     'blogs': ['blogs'],
-    'security': ['security'],
+    'news': ['news'],
     'subreddits': ['subreddits'],
     'twitch': ['twitch']
   };
@@ -1585,7 +1520,7 @@ function getSiteUrl(name, category, feedUrl) {
   } else if (category === 'twitch') {
     // Name is username
     siteUrl = `https://www.twitch.tv/${name}`;
-  } else if (category === 'blogs' || category === 'security') {
+  } else if (category === 'blogs' || category === 'news') {
     // Fallback to feed URL if no better link is available yet
     siteUrl = feedUrl || '#';
   }
@@ -1597,7 +1532,7 @@ function getSiteUrl(name, category, feedUrl) {
  * Sort feed cards by recency within each section
  */
 function sortFeedsByRecency() {
-  const sections = ['youtube', 'blogs', 'security', 'subreddits', 'twitch'];
+  const sections = ['youtube', 'blogs', 'news', 'subreddits', 'twitch'];
 
   sections.forEach(section => {
     const grid = document.getElementById(`${section}-grid`);

@@ -5,7 +5,7 @@ A modern, mobile-first RSS feed aggregator with swipeable navigation and advance
 ## Features
 
 ### 🎯 Swipeable Section Navigation
-- **5 Sections**: YouTube, Blogs, Security, Subreddits, Twitch
+- **5 Sections**: YouTube, Blogs, News, Subreddits, Twitch
 - **Touch Gestures**: Swipe left/right on mobile devices
 - **Keyboard Navigation**: Use arrow keys (←/→) to navigate
 - **Tab Buttons**: Click tabs for direct section access

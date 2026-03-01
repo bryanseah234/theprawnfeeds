@@ -50,7 +50,7 @@
         <div class="header-tabs desktop-tabs">
           <button class="header-tab active" data-section="youtube">YouTube</button>
           <button class="header-tab" data-section="blogs">Blogs</button>
-          <button class="header-tab" data-section="security">Security</button>
+          <button class="header-tab" data-section="news">News</button>
           <button class="header-tab" data-section="subreddits">Subreddits</button>
           <button class="header-tab" data-section="twitch">Twitch</button>
         </div>
@@ -73,7 +73,7 @@
     <div class="mobile-nav-dropdown" id="mobile-nav-dropdown" aria-hidden="true">
       <button class="mobile-nav-item active" data-section="youtube">📺 YouTube</button>
       <button class="mobile-nav-item" data-section="blogs">📝 Blogs</button>
-      <button class="mobile-nav-item" data-section="security">🔒 Security</button>
+      <button class="mobile-nav-item" data-section="news">📰 News</button>
       <button class="mobile-nav-item" data-section="subreddits">🔗 Subreddits</button>
       <button class="mobile-nav-item" data-section="twitch">🎮 Twitch</button>
     </div>
@@ -84,36 +84,6 @@
       <button class="mobile-theme-option active" data-theme="system">💻 System</button>
     </div>
   </header>
-
-  <!-- Section Tools: explicit view toggle + per-section search -->
-  <div class="section-tools" aria-label="Section display controls">
-    <button id="view-toggle-btn" class="view-toggle-btn" type="button" aria-label="Toggle section view mode">
-      📜 Timeline
-    </button>
-    <label class="section-search-wrap" for="section-search">
-      <span class="sr-only">Filter current section</span>
-      <input
-        id="section-search"
-        class="section-search"
-        type="search"
-        placeholder="Filter current section..."
-        autocomplete="off"
-        spellcheck="false"
-      />
-      <button
-        id="section-search-clear"
-        class="section-search-clear"
-        type="button"
-        aria-label="Clear section filter"
-        title="Clear filter"
-        hidden
-      >
-        ✕
-      </button>
-    </label>
-  </div>
-
-
 
   <!-- Swipeable Sections Container -->
   <main class="sections-container" role="main">
@@ -134,11 +104,11 @@
         </div>
       </section>
 
-      <!-- Security Section -->
-      <section class="section" id="security-section" data-section="security" role="tabpanel"
-        aria-labelledby="security-tab" aria-hidden="true">
+      <!-- News Section -->
+      <section class="section" id="news-section" data-section="news" role="tabpanel"
+        aria-labelledby="news-tab" aria-hidden="true">
         <div class="section-content">
-          <div class="feed-grid" id="security-grid" role="feed" aria-label="Security news feeds"></div>
+          <div class="feed-grid" id="news-grid" role="feed" aria-label="News feeds"></div>
         </div>
       </section>
 
@@ -192,6 +162,10 @@
   <footer class="footer">
     <p>Prawn Feeds &copy; <span id="year"></span></p>
   </footer>
+
+  <button id="view-fab" class="view-fab" type="button" aria-label="Switch to card view" title="Cards view">
+    📇
+  </button>
 
   <script src="/feeds.js"></script>
   <script src="/app.js"></script>

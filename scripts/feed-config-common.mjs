@@ -6,7 +6,7 @@ export const FEEDS_JSON_PATH = path.join(ROOT, 'feeds.json');
 export const FEEDS_JS_PATH = path.join(ROOT, 'public', 'feeds.js');
 
 const BLOG_SECTION_MATCHERS = ['blog'];
-const SECURITY_SECTION_MATCHERS = ['security', 'tech'];
+const NEWS_SECTION_MATCHERS = ['security', 'tech', 'news'];
 
 function includesAny(text, tokens) {
   const value = String(text || '').toLowerCase();
@@ -56,7 +56,7 @@ export function buildFrontEndFeedsFromJson(rawConfig) {
   return {
     youtube: normalizeYouTubeChannels(rawConfig?.youtube_channels || []),
     blogs: normalizeSectionFeeds(sections, BLOG_SECTION_MATCHERS),
-    security: normalizeSectionFeeds(sections, SECURITY_SECTION_MATCHERS),
+    news: normalizeSectionFeeds(sections, NEWS_SECTION_MATCHERS),
     subreddits: normalizeSubreddits(rawConfig?.subreddits || []),
     twitch: normalizeTwitchChannels(rawConfig?.twitch_channels || [])
   };

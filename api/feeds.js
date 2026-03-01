@@ -37,7 +37,7 @@ function mapFeedsConfig(rawConfig) {
   }));
 
   const blogs = normalizeSectionFeeds(sections, ['blog']);
-  const security = normalizeSectionFeeds(sections, ['security', 'tech']);
+  const news = normalizeSectionFeeds(sections, ['security', 'tech', 'news']);
 
   const subreddits = (rawConfig?.subreddits || []).map(sub => {
     const cleaned = String(sub || '').replace(/^r\//i, '');
@@ -54,7 +54,7 @@ function mapFeedsConfig(rawConfig) {
     limit: 3
   }));
 
-  return { youtube, blogs, security, subreddits, twitch };
+  return { youtube, blogs, news, subreddits, twitch };
 }
 
 async function loadFeeds() {

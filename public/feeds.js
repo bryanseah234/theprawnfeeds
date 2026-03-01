@@ -787,7 +787,7 @@ const FEEDS = {
       "limit": 3
     }
   ],
-  "security": [
+  "news": [
     {
       "name": "Hackread",
       "url": "https://hackread.com/feed/",
