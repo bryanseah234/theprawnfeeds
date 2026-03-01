@@ -19,6 +19,8 @@ let totalFeeds = 0;
 const failedFeeds = [];
 const feedDataCache = new Map();
 const sectionScrollPositions = {};
+let timelineUpdateTimer = null;
+let timelineHasRendered = false;
 
 // View state per section (timeline or cards)
 const sectionViewState = {
@@ -288,12 +290,8 @@ function setupSections() {
   // Store feed configs for async lazy loading
   window.feedConfigsPending = feedConfigs;
 
-  // Schedule lazy fetch for next tick (after page renders)
-  requestAnimationFrame(() => {
-    setTimeout(() => {
-      startLazyLoadFeeds();
-    }, 100);
-  });
+  // Start fetching immediately for instant content
+  startLazyLoadFeeds();
 }
 
 /**
@@ -345,6 +343,22 @@ async function fetchFeed(feed, card) {
     feedDataCache.set(getFeedCacheKey(feed), data);
 
     updateFeedCard(card, data, feed.limit);
+    
+    // Progressively update timeline view as feeds load
+    const feedSection = card.parentElement?.id?.replace('-grid', '');
+    if (feedSection === currentSection && sectionViewState[currentSection] === 'timeline') {
+      if (!timelineHasRendered) {
+        // First render: immediate for instant feedback
+        renderSectionView(currentSection);
+        timelineHasRendered = true;
+      } else {
+        // Subsequent renders: debounced to avoid excessive re-renders
+        clearTimeout(timelineUpdateTimer);
+        timelineUpdateTimer = setTimeout(() => {
+          renderSectionView(currentSection);
+        }, 150);
+      }
+    }
   } catch (error) {
     showFeedError(card, error.message, feed);
   } finally {
@@ -970,6 +984,9 @@ function switchSection(sectionName) {
     newTab.classList.add('active');
     newTab.setAttribute('aria-selected', 'true');
     currentSection = sectionName;
+    
+    // Reset timeline render flag for new section to ensure immediate first update
+    timelineHasRendered = false;
 
     // Render section in its saved view mode
     renderSectionView(sectionName);
