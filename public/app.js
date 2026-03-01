@@ -322,44 +322,43 @@ async function fetchFeed(feed, card) {
 
 /**
  * Fetch feeds with concurrency limit
+ * YouTube feeds have separate concurrency limit but load in parallel with other feeds
  */
 async function fetchFeedsWithConcurrency(feedConfigs, limit) {
-  const standardQueue = [];
-  const youtubeQueue = [];
-
-  for (const cfg of feedConfigs) {
-    if (isYouTubeFeedUrl(cfg?.feed?.url)) {
-      youtubeQueue.push(cfg);
-    } else {
-      standardQueue.push(cfg);
-    }
-  }
-
-  // Load non-YouTube feeds first at normal concurrency.
-  await processFeedQueue(standardQueue, limit);
-
-  // Then load YouTube feeds with gentler concurrency to reduce transient upstream failures.
-  await processFeedQueue(youtubeQueue, YOUTUBE_CONCURRENCY_LIMIT);
-}
-
-/**
- * Process a queue of feeds with a specific concurrency limit.
- */
-async function processFeedQueue(queue, limit) {
-  const pending = [...queue];
+  const pending = [...feedConfigs];
   const executing = [];
+  const youtubeExecuting = [];
 
-  while (pending.length > 0 || executing.length > 0) {
+  while (pending.length > 0 || executing.length > 0 || youtubeExecuting.length > 0) {
+    // Fill up standard feed slots
     while (executing.length < limit && pending.length > 0) {
-      const { feed, card } = pending.shift();
-      const promise = fetchFeed(feed, card).then(() => {
-        executing.splice(executing.indexOf(promise), 1);
-      });
-      executing.push(promise);
+      const cfg = pending.shift();
+      
+      if (isYouTubeFeedUrl(cfg?.feed?.url)) {
+        // YouTube feed - add to separate queue with its own limit
+        if (youtubeExecuting.length < YOUTUBE_CONCURRENCY_LIMIT) {
+          const promise = fetchFeed(cfg.feed, cfg.card).then(() => {
+            youtubeExecuting.splice(youtubeExecuting.indexOf(promise), 1);
+          });
+          youtubeExecuting.push(promise);
+        } else {
+          // YouTube slots full, put back in queue
+          pending.unshift(cfg);
+          break;
+        }
+      } else {
+        // Standard feed
+        const promise = fetchFeed(cfg.feed, cfg.card).then(() => {
+          executing.splice(executing.indexOf(promise), 1);
+        });
+        executing.push(promise);
+      }
     }
 
-    if (executing.length > 0) {
-      await Promise.race(executing);
+    // Wait for any feed to complete
+    const allExecuting = [...executing, ...youtubeExecuting];
+    if (allExecuting.length > 0) {
+      await Promise.race(allExecuting);
     }
   }
 }
