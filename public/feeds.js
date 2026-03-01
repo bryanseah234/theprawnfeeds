@@ -747,11 +747,6 @@ const FEEDS = {
       "limit": 3
     },
     {
-      "name": "freyavie",
-      "url": "https://freyavie.blog/feed/?type=rss",
-      "limit": 3
-    },
-    {
       "name": "ryeones",
       "url": "https://www.ryeones.com/feed.xml",
       "limit": 3
@@ -784,6 +779,11 @@ const FEEDS = {
     {
       "name": "Small Things Mostly",
       "url": "https://smallthingsmostly.me/feed.rss",
+      "limit": 3
+    },
+    {
+      "name": "Nurul",
+      "url": "https://nurul.blog/feed/?type=rss",
       "limit": 3
     }
   ],
@@ -847,6 +847,11 @@ const FEEDS = {
       "name": "Collecting Flags",
       "url": "https://collectingflags.com/feed/",
       "limit": 5
+    },
+    {
+      "name": "The Hacker News",
+      "url": "https://feeds.feedburner.com/TheHackersNews",
+      "limit": 5
     }
   ],
   "subreddits": [
@@ -881,81 +886,66 @@ const FEEDS = {
       "limit": 3
     }
   ],
-  "twitch": [
+  "substack": [
     {
-      "name": "pokimane",
-      "url": "https://twitchrss.appspot.com/vod/pokimane",
-      "limit": 3
+      "name": "Longreads",
+      "url": "https://longreads.com/feed",
+      "limit": 5
     },
     {
-      "name": "xQc",
-      "url": "https://twitchrss.appspot.com/vod/xQc",
-      "limit": 3
+      "name": "A girl, a spiral",
+      "url": "https://m00nlight04.substack.com/feed",
+      "limit": 5
     },
     {
-      "name": "Ninja",
-      "url": "https://twitchrss.appspot.com/vod/Ninja",
-      "limit": 3
+      "name": "Answer In Progress",
+      "url": "https://answerinprogress.substack.com/feed",
+      "limit": 5
     },
     {
-      "name": "scarra",
-      "url": "https://twitchrss.appspot.com/vod/scarra",
-      "limit": 3
+      "name": "audrey rambles",
+      "url": "https://audreytang.substack.com/feed",
+      "limit": 5
     },
     {
-      "name": "lilypichu",
-      "url": "https://twitchrss.appspot.com/vod/lilypichu",
-      "limit": 3
+      "name": "The Etymology Nerd",
+      "url": "https://etymology.substack.com/feed",
+      "limit": 5
     },
     {
-      "name": "disguisedtoast",
-      "url": "https://twitchrss.appspot.com/vod/disguisedtoast",
-      "limit": 3
+      "name": "Design Like You Mean It",
+      "url": "https://designlikeyoumeanit.substack.com/feed",
+      "limit": 5
     },
     {
-      "name": "michaelreeves",
-      "url": "https://twitchrss.appspot.com/vod/michaelreeves",
-      "limit": 3
+      "name": "Useful Fictions",
+      "url": "https://usefulfictions.substack.com/feed",
+      "limit": 5
     },
     {
-      "name": "quarterjade",
-      "url": "https://twitchrss.appspot.com/vod/quarterjade",
-      "limit": 3
+      "name": "Duo's Writing Safe",
+      "url": "https://notduotheowl.substack.com/feed",
+      "limit": 5
     },
     {
-      "name": "masayoshi",
-      "url": "https://twitchrss.appspot.com/vod/masayoshi",
-      "limit": 3
+      "name": "The ELAC Gazette",
+      "url": "https://elacgazette.substack.com/feed",
+      "limit": 5
     },
     {
-      "name": "sydeon",
-      "url": "https://twitchrss.appspot.com/vod/sydeon",
-      "limit": 3
+      "name": "charli's substack",
+      "url": "https://itscharlibb.substack.com/feed",
+      "limit": 5
     },
     {
-      "name": "yvonnie",
-      "url": "https://twitchrss.appspot.com/vod/yvonnie",
-      "limit": 3
+      "name": "Kelly’s Chaos Notebook",
+      "url": "https://kelly.substack.com/feed",
+      "limit": 5
     },
     {
-      "name": "fuslie",
-      "url": "https://twitchrss.appspot.com/vod/fuslie",
-      "limit": 3
-    },
-    {
-      "name": "jasontheween",
-      "url": "https://twitchrss.appspot.com/vod/jasontheween",
-      "limit": 3
-    },
-    {
-      "name": "qtcinderella",
-      "url": "https://twitchrss.appspot.com/vod/qtcinderella",
-      "limit": 3
-    },
-    {
-      "name": "mayahiga",
-      "url": "https://twitchrss.appspot.com/vod/mayahiga",
-      "limit": 3
+      "name": "faith's core",
+      "url": "https://faithcore.substack.com/feed",
+      "limit": 5
     }
   ]
 };

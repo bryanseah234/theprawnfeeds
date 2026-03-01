@@ -42,11 +42,11 @@ function normalizeSubreddits(subreddits = []) {
   });
 }
 
-function normalizeTwitchChannels(twitchChannels = []) {
-  return twitchChannels.map(channel => ({
-    name: channel,
-    url: `https://twitchrss.appspot.com/vod/${channel}`,
-    limit: 3
+function normalizeSubstack(substack = []) {
+  return substack.map(feed => ({
+    name: feed.name,
+    url: feed.url,
+    limit: Number.isFinite(feed.limit) ? feed.limit : 3
   }));
 }
 
@@ -58,7 +58,7 @@ export function buildFrontEndFeedsFromJson(rawConfig) {
     blogs: normalizeSectionFeeds(sections, BLOG_SECTION_MATCHERS),
     news: normalizeSectionFeeds(sections, NEWS_SECTION_MATCHERS),
     subreddits: normalizeSubreddits(rawConfig?.subreddits || []),
-    twitch: normalizeTwitchChannels(rawConfig?.twitch_channels || [])
+    substack: normalizeSubstack(rawConfig?.substack || [])
   };
 }
 

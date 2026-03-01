@@ -48,13 +48,13 @@ function mapFeedsConfig(rawConfig) {
     };
   });
 
-  const twitch = (rawConfig?.twitch_channels || []).map(channel => ({
-    name: channel,
-    url: `https://twitchrss.appspot.com/vod/${channel}`,
-    limit: 3
+  const substack = (rawConfig?.substack || []).map(feed => ({
+    name: feed.name,
+    url: feed.url,
+    limit: normalizeLimit(feed.limit, 3)
   }));
 
-  return { youtube, blogs, news, subreddits, twitch };
+  return { youtube, blogs, news, subreddits, substack };
 }
 
 async function loadFeeds() {

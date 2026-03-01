@@ -26,7 +26,7 @@ const sectionViewState = {
   blogs: 'timeline',
   news: 'timeline',
   subreddits: 'timeline',
-  twitch: 'timeline'
+  substack: 'timeline'
 };
 
 // Touch handling state
@@ -44,7 +44,7 @@ function normalizeFeedsShape(rawFeeds = {}) {
     blogs: Array.isArray(rawFeeds?.blogs) ? rawFeeds.blogs : [],
     news: Array.isArray(rawFeeds?.news) ? rawFeeds.news : [],
     subreddits: Array.isArray(rawFeeds?.subreddits) ? rawFeeds.subreddits : [],
-    twitch: Array.isArray(rawFeeds?.twitch) ? rawFeeds.twitch : []
+    substack: Array.isArray(rawFeeds?.substack) ? rawFeeds.substack : []
   };
 }
 
@@ -135,10 +135,10 @@ async function init() {
   // Setup theme toggle
   setupThemeToggle();
 
-  // Setup sections and load feeds
-  await setupSections();
+  // Setup sections with skeleton cards (renders instantly)
+  setupSections();
 
-  // Setup event listeners
+  // Setup event listeners (before feeds arrive so UI is interactive)
   setupTabNavigation();
   setupMobileMenu();
   setupTouchNavigation();
@@ -149,7 +149,42 @@ async function init() {
   // Load initial section (YouTube) in timeline view
   switchSection('youtube');
 
-  console.log(`[RSS Dashboard] Initialized with ${totalFeeds} feeds`);
+  // Hide global loader immediately - feeds will load progressively after this
+  const loader = document.getElementById('global-loader');
+  if (loader) {
+    loader.style.opacity = '0';
+    setTimeout(() => {
+      loader.style.display = 'none';
+    }, 300);
+  }
+
+  console.log(`[RSS Dashboard] Initialized with ${totalFeeds} feeds (lazy-loading in background)`);
+}
+
+/**
+ * Start lazy fetching all feeds in background (non-blocking).
+ * Feeds populate cards as they complete.
+ */
+function startLazyLoadFeeds() {
+  if (!window.feedConfigsPending || window.feedConfigsPending.length === 0) return;
+
+  console.log(`[RSS Dashboard] Starting background fetch of ${window.feedConfigsPending.length} feeds`);
+
+  // Kick off the concurrent fetch but don't wait for completion
+  fetchFeedsWithConcurrency(window.feedConfigsPending, CONCURRENCY_LIMIT)
+    .then(() => {
+      console.log('[RSS Dashboard] All feeds loaded, sorting by recency');
+      sortFeedsByRecency();
+
+      if (failedFeeds.length > 0) {
+        displayOfflineFeeds();
+      }
+    })
+    .catch((error) => {
+      console.error('[RSS Dashboard] Feed loading failed:', error);
+    });
+
+  window.feedConfigsPending = null;
 }
 
 /**
@@ -186,9 +221,10 @@ function updateViewFabIcon() {
 }
 
 /**
- * Setup all sections and create feed cards
+ * Setup all sections and create feed cards with skeleton loaders.
+ * Does NOT fetch feeds - that happens asynchronously via startLazyLoadFeeds().
  */
-async function setupSections() {
+function setupSections() {
   const feedConfigs = [];
 
   // YouTube section
@@ -231,37 +267,27 @@ async function setupSections() {
     });
   }
 
-  // Twitch section
-  if (window.FEEDS?.twitch) {
-    const grid = document.getElementById('twitch-grid');
-    window.FEEDS.twitch.forEach(feed => {
-      const card = createFeedCard(feed.name, 'twitch', feed.url);
+  // Substack section
+  if (window.FEEDS?.substack) {
+    const grid = document.getElementById('substack-grid');
+    window.FEEDS.substack.forEach(feed => {
+      const card = createFeedCard(feed.name, 'substack', feed.url);
       grid.appendChild(card);
-      feedConfigs.push({ feed, card, grid, section: 'twitch' });
+      feedConfigs.push({ feed, card, grid, section: 'substack' });
     });
   }
 
   totalFeeds = feedConfigs.length;
 
-  // Fetch all feeds with concurrency limit
-  await fetchFeedsWithConcurrency(feedConfigs, CONCURRENCY_LIMIT);
+  // Store feed configs for async lazy loading
+  window.feedConfigsPending = feedConfigs;
 
-  // Hide global loader when done
-  const loader = document.getElementById('global-loader');
-  if (loader) {
-    loader.style.opacity = '0';
+  // Schedule lazy fetch for next tick (after page renders)
+  requestAnimationFrame(() => {
     setTimeout(() => {
-      loader.style.display = 'none';
-    }, 300); // Wait for transition
-  }
-
-  // Sort feeds by recency within each section
-  sortFeedsByRecency();
-
-  // Display offline feeds section if any (initial check)
-  if (failedFeeds.length > 0) {
-    displayOfflineFeeds();
-  }
+      startLazyLoadFeeds();
+    }, 100);
+  });
 }
 
 /**
@@ -892,7 +918,7 @@ function setupKeyboardNavigation() {
  * Navigate to previous section
  */
 function navigateToPreviousSection() {
-  const sections = ['youtube', 'blogs', 'news', 'subreddits', 'twitch'];
+  const sections = ['youtube', 'blogs', 'news', 'subreddits', 'substack'];
   const currentIndex = sections.indexOf(currentSection);
 
   if (currentIndex > 0) {
@@ -904,7 +930,7 @@ function navigateToPreviousSection() {
  * Navigate to next section
  */
 function navigateToNextSection() {
-  const sections = ['youtube', 'blogs', 'news', 'subreddits', 'twitch'];
+  const sections = ['youtube', 'blogs', 'news', 'subreddits', 'substack'];
   const currentIndex = sections.indexOf(currentSection);
 
   if (currentIndex < sections.length - 1) {
@@ -1160,7 +1186,7 @@ function getSectionFeeds(section) {
     'blogs': window.FEEDS.blogs,
     'news': window.FEEDS.news,
     'subreddits': window.FEEDS.subreddits,
-    'twitch': window.FEEDS.twitch
+    'substack': window.FEEDS.substack
   };
 
   return sectionMap[section];
@@ -1385,7 +1411,7 @@ function filterOfflineFeeds(sectionName) {
     'blogs': ['blogs'],
     'news': ['news'],
     'subreddits': ['subreddits'],
-    'twitch': ['twitch']
+    'substack': ['substack']
   };
 
   const relevantCategories = sectionCategories[sectionName] || [];
@@ -1551,9 +1577,9 @@ function getSiteUrl(name, category, feedUrl) {
     // Name is "r/subreddit"
     const subName = name.replace(/^r\//i, '');
     siteUrl = `https://www.reddit.com/r/${subName}`;
-  } else if (category === 'twitch') {
-    // Name is username
-    siteUrl = `https://www.twitch.tv/${name}`;
+  } else if (category === 'substack') {
+    // Fallback to feed URL if no better link is available yet
+    siteUrl = feedUrl || '#';
   } else if (category === 'blogs' || category === 'news') {
     // Fallback to feed URL if no better link is available yet
     siteUrl = feedUrl || '#';
@@ -1566,7 +1592,7 @@ function getSiteUrl(name, category, feedUrl) {
  * Sort feed cards by recency within each section
  */
 function sortFeedsByRecency() {
-  const sections = ['youtube', 'blogs', 'news', 'subreddits', 'twitch'];
+  const sections = ['youtube', 'blogs', 'news', 'subreddits', 'substack'];
 
   sections.forEach(section => {
     const grid = document.getElementById(`${section}-grid`);
