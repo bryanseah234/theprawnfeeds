@@ -2,6 +2,10 @@
   "version": 2,
   "builds": [
     {
+      "src": "api/feeds.js",
+      "use": "@vercel/node"
+    },
+    {
       "src": "api/rss.js",
       "use": "@vercel/node"
     },
@@ -22,6 +26,10 @@
     }
   ],
   "routes": [
+    {
+      "src": "/api/feeds",
+      "dest": "/api/feeds.js"
+    },
     {
       "src": "/api/rss",
       "dest": "/api/rss.js"

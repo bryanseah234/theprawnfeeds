@@ -9,6 +9,7 @@ const API_ENDPOINT = '/api/rss';
 const EXTENDED_FETCH_LIMIT = 50; // Increased to support infinite scroll in modal
 const MODAL_LOAD_INCREMENT = 10;
 const MS_PER_DAY = 1000 * 60 * 60 * 24;
+const SAFE_PROTOCOLS = new Set(['http:', 'https:']);
 
 // State
 let currentSection = 'youtube';
@@ -17,6 +18,13 @@ let totalFeeds = 0;
 const failedFeeds = [];
 const feedDataCache = new Map();
 const sectionScrollPositions = {};
+const sectionSearchState = {
+  youtube: '',
+  blogs: '',
+  security: '',
+  subreddits: '',
+  twitch: ''
+};
 
 // View state per section (timeline or cards)
 const sectionViewState = {
@@ -34,11 +42,101 @@ let touchCurrentX = 0;
 let isSwiping = false;
 
 /**
+ * Normalize FEEDS object shape for consistent frontend usage.
+ */
+function normalizeFeedsShape(rawFeeds = {}) {
+  return {
+    youtube: Array.isArray(rawFeeds?.youtube) ? rawFeeds.youtube : [],
+    blogs: Array.isArray(rawFeeds?.blogs) ? rawFeeds.blogs : [],
+    security: Array.isArray(rawFeeds?.security) ? rawFeeds.security : [],
+    subreddits: Array.isArray(rawFeeds?.subreddits) ? rawFeeds.subreddits : [],
+    twitch: Array.isArray(rawFeeds?.twitch) ? rawFeeds.twitch : []
+  };
+}
+
+/**
+ * Build stable signature for FEEDS object comparison.
+ */
+function getFeedsSignature(rawFeeds = {}) {
+  const normalized = normalizeFeedsShape(rawFeeds);
+  const rows = [];
+
+  for (const [category, feeds] of Object.entries(normalized)) {
+    for (const feed of feeds) {
+      rows.push({
+        category,
+        name: String(feed?.name || '').trim(),
+        url: String(feed?.url || '').trim().toLowerCase(),
+        limit: Number.isFinite(feed?.limit) ? feed.limit : 3
+      });
+    }
+  }
+
+  rows.sort((a, b) => {
+    if (a.category !== b.category) return a.category.localeCompare(b.category);
+    if (a.url !== b.url) return a.url.localeCompare(b.url);
+    return a.name.localeCompare(b.name);
+  });
+
+  return JSON.stringify(rows);
+}
+
+/**
+ * Load canonical feed config from API, with fallback to bundled feeds.js.
+ */
+async function loadFeedsConfig() {
+  const fallbackFeeds = normalizeFeedsShape(window.FEEDS || {});
+
+  try {
+    const response = await fetch('/api/feeds', {
+      headers: { 'Accept': 'application/json' }
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+
+    const data = await response.json();
+    const canonicalFeeds = normalizeFeedsShape(data);
+    window.FEEDS = canonicalFeeds;
+
+    // Reminder: if fallback feeds.js diverges from canonical feeds.json mapping,
+    // surface an actionable warning for local maintenance.
+    const fallbackCount = Object.values(fallbackFeeds).reduce((sum, items) => sum + items.length, 0);
+    if (fallbackCount > 0) {
+      const canonicalSig = getFeedsSignature(canonicalFeeds);
+      const fallbackSig = getFeedsSignature(fallbackFeeds);
+
+      if (canonicalSig !== fallbackSig) {
+        console.warn('[RSS Dashboard] feeds.js safety-net is out of sync with canonical feeds.json. Run: npm run sync:feeds');
+      }
+    }
+
+    console.log('[RSS Dashboard] Loaded canonical feed config from /api/feeds');
+    return;
+  } catch (error) {
+    const fallbackCount = Object.values(fallbackFeeds).reduce((sum, items) => sum + items.length, 0);
+
+    if (fallbackCount > 0) {
+      window.FEEDS = fallbackFeeds;
+      console.warn('[RSS Dashboard] Falling back to bundled feeds.js config:', error?.message || error);
+      return;
+    }
+
+    console.error('[RSS Dashboard] Failed to load feed config from API and fallback config is empty');
+    window.FEEDS = normalizeFeedsShape({});
+  }
+}
+
+/**
  * Initialize the application
  */
 async function init() {
   // Set current year
   document.getElementById('year').textContent = new Date().getFullYear();
+
+  // Load feed configuration (canonical API with safe fallback)
+  await loadFeedsConfig();
 
   // Setup theme toggle
   setupThemeToggle();
@@ -51,12 +149,94 @@ async function init() {
   setupMobileMenu();
   setupTouchNavigation();
   setupKeyboardNavigation();
+  setupSectionTools();
   setupModal();
 
   // Load initial section (YouTube) in timeline view
   switchSection('youtube');
 
   console.log(`[RSS Dashboard] Initialized with ${totalFeeds} feeds`);
+}
+
+/**
+ * Setup section-level controls (explicit view toggle + search)
+ */
+function setupSectionTools() {
+  const viewToggleBtn = document.getElementById('view-toggle-btn');
+  const sectionSearch = document.getElementById('section-search');
+  const sectionSearchClear = document.getElementById('section-search-clear');
+
+  if (viewToggleBtn) {
+    viewToggleBtn.addEventListener('click', () => {
+      sectionViewState[currentSection] =
+        sectionViewState[currentSection] === 'timeline' ? 'cards' : 'timeline';
+      renderSectionView(currentSection);
+      updateTabIndicator(currentSection);
+      updateSectionTools();
+    });
+  }
+
+  if (sectionSearch) {
+    sectionSearch.addEventListener('input', (e) => {
+      const value = (e.target.value || '').trimStart();
+      sectionSearchState[currentSection] = value;
+      renderSectionView(currentSection);
+      updateSectionTools();
+    });
+
+    sectionSearch.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        const hasQuery = Boolean((sectionSearchState[currentSection] || '').trim());
+        if (hasQuery) {
+          e.preventDefault();
+          sectionSearchState[currentSection] = '';
+          sectionSearch.value = '';
+          renderSectionView(currentSection);
+          updateSectionTools();
+        }
+      }
+    });
+  }
+
+  if (sectionSearchClear && sectionSearch) {
+    sectionSearchClear.addEventListener('click', () => {
+      sectionSearchState[currentSection] = '';
+      sectionSearch.value = '';
+      renderSectionView(currentSection);
+      updateSectionTools();
+      sectionSearch.focus();
+    });
+  }
+
+  updateSectionTools();
+}
+
+/**
+ * Update the section tool controls to reflect active section state.
+ */
+function updateSectionTools() {
+  const viewToggleBtn = document.getElementById('view-toggle-btn');
+  const sectionSearch = document.getElementById('section-search');
+  const sectionSearchClear = document.getElementById('section-search-clear');
+
+  if (viewToggleBtn) {
+    const isTimeline = sectionViewState[currentSection] === 'timeline';
+    viewToggleBtn.textContent = isTimeline ? '📜 Timeline' : '📇 Cards';
+    viewToggleBtn.setAttribute(
+      'aria-label',
+      isTimeline ? 'Switch to card view' : 'Switch to timeline view'
+    );
+  }
+
+  if (sectionSearch) {
+    sectionSearch.value = sectionSearchState[currentSection] || '';
+    sectionSearch.setAttribute('placeholder', `Filter ${currentSection}...`);
+  }
+
+  if (sectionSearchClear) {
+    const hasQuery = Boolean((sectionSearchState[currentSection] || '').trim());
+    sectionSearchClear.hidden = !hasQuery;
+  }
 }
 
 /**
@@ -68,7 +248,7 @@ async function setupSections() {
   // YouTube section
   if (window.FEEDS?.youtube) {
     const grid = document.getElementById('youtube-grid');
-    FEEDS.youtube.forEach(feed => {
+    window.FEEDS.youtube.forEach(feed => {
       const card = createFeedCard(feed.name, 'youtube', feed.url);
       grid.appendChild(card);
       feedConfigs.push({ feed, card, grid, section: 'youtube' });
@@ -78,7 +258,7 @@ async function setupSections() {
   // Blogs section
   if (window.FEEDS?.blogs) {
     const grid = document.getElementById('blogs-grid');
-    FEEDS.blogs.forEach(feed => {
+    window.FEEDS.blogs.forEach(feed => {
       const card = createFeedCard(feed.name, 'blogs', feed.url);
       grid.appendChild(card);
       feedConfigs.push({ feed, card, grid, section: 'blogs' });
@@ -88,7 +268,7 @@ async function setupSections() {
   // Security section
   if (window.FEEDS?.security) {
     const grid = document.getElementById('security-grid');
-    FEEDS.security.forEach(feed => {
+    window.FEEDS.security.forEach(feed => {
       const card = createFeedCard(feed.name, 'security', feed.url);
       grid.appendChild(card);
       feedConfigs.push({ feed, card, grid, section: 'security' });
@@ -98,7 +278,7 @@ async function setupSections() {
   // Subreddits section
   if (window.FEEDS?.subreddits) {
     const grid = document.getElementById('subreddits-grid');
-    FEEDS.subreddits.forEach(feed => {
+    window.FEEDS.subreddits.forEach(feed => {
       const card = createFeedCard(feed.name, 'subreddits', feed.url);
       grid.appendChild(card);
       feedConfigs.push({ feed, card, grid, section: 'subreddits' });
@@ -108,7 +288,7 @@ async function setupSections() {
   // Twitch section
   if (window.FEEDS?.twitch) {
     const grid = document.getElementById('twitch-grid');
-    FEEDS.twitch.forEach(feed => {
+    window.FEEDS.twitch.forEach(feed => {
       const card = createFeedCard(feed.name, 'twitch', feed.url);
       grid.appendChild(card);
       feedConfigs.push({ feed, card, grid, section: 'twitch' });
@@ -147,11 +327,12 @@ function createFeedCard(name, category, url = '') {
   card.dataset.name = name.toLowerCase();
   card.dataset.category = category;
   card.dataset.url = url;
+  card.dataset.feedKey = getFeedCacheKey({ name, url });
   const siteUrl = getSiteUrl(name, category, url);
   card.innerHTML = `
     <div class="feed-card-header">
       <div class="feed-card-header-left">
-        <a href="${escapeHtml(siteUrl)}" class="feed-card-title-link" target="_blank" rel="noopener noreferrer">
+        <a href="${escapeHtml(sanitizeUrl(siteUrl))}" class="feed-card-title-link" target="_blank" rel="noopener noreferrer">
           <span class="feed-card-title">${escapeHtml(name)}</span>
         </a>
         <span class="feed-card-count">...</span>
@@ -183,7 +364,7 @@ async function fetchFeed(feed, card) {
     const data = await response.json();
 
     // Cache the feed data
-    feedDataCache.set(feed.name, data);
+    feedDataCache.set(getFeedCacheKey(feed), data);
 
     updateFeedCard(card, data, feed.limit);
   } catch (error) {
@@ -263,7 +444,7 @@ function updateFeedCard(card, data, initialLimit = 3) {
       siteUrl = data.site_url;
     }
 
-    titleLink.href = siteUrl;
+    titleLink.href = sanitizeUrl(siteUrl);
   }
 
   // Update count
@@ -286,12 +467,18 @@ function updateFeedCard(card, data, initialLimit = 3) {
 
     // Track as failed feed for offline section
     const feedName = card.dataset.name || 'Unknown Feed';
-    failedFeeds.push({
+    const failure = {
+      key: card.dataset.feedKey || getFeedCacheKey({ name: feedName, url: feedUrl }),
       name: feedName,
-      url: '',
+      url: feedUrl,
       category: card.dataset.category,
       error: 'No items available'
-    });
+    };
+
+    const alreadyTracked = failedFeeds.some(f => f.key === failure.key);
+    if (!alreadyTracked) {
+      failedFeeds.push(failure);
+    }
 
     // Treat as offline feed - hide immediately from main grid
     card.classList.add('error');
@@ -322,8 +509,8 @@ function updateFeedCard(card, data, initialLimit = 3) {
     const articleRecencyClass = getRecencyClass(item.pubDate);
     return `
     <li class="feed-item ${articleRecencyClass}" data-index="${index}">
-      <a href="${escapeHtml(item.link)}" class="feed-item-link" target="_blank" rel="noopener noreferrer">
-        ${item.thumbnail ? `<img src="${escapeHtml(item.thumbnail)}" alt="" class="feed-item-thumbnail" loading="lazy">` : ''}
+      <a href="${escapeHtml(sanitizeUrl(item.link))}" class="feed-item-link" target="_blank" rel="noopener noreferrer">
+        ${item.thumbnail ? `<img src="${escapeHtml(sanitizeUrl(item.thumbnail))}" alt="" class="feed-item-thumbnail" loading="lazy">` : ''}
         <div class="feed-item-content">
           <div class="feed-item-title">${escapeHtml(item.title)}</div>
           ${item.text ? `<div class="feed-item-text">${escapeHtml(truncateText(item.text))}</div>` : ''}
@@ -372,12 +559,19 @@ function showFeedError(card, error, feed) {
   itemsEl.innerHTML = '<li class="error-message">Failed to load feed</li>';
 
   // Track failed feed for grouping
-  failedFeeds.push({
+  const failure = {
+    key: card.dataset.feedKey || getFeedCacheKey(feed),
     name: feed.name,
     url: feed.url,
     category: card.dataset.category,
     error: error
-  });
+  };
+
+  // Avoid duplicate entries for the same feed
+  const alreadyTracked = failedFeeds.some(f => f.key === failure.key);
+  if (!alreadyTracked) {
+    failedFeeds.push(failure);
+  }
 
   console.error(`[Feed Error] ${card.dataset.name}:`, error);
 
@@ -438,13 +632,7 @@ function setupTabNavigation() {
  * Handle tab click - switch section or toggle view
  */
 function handleTabClick(section) {
-  if (section === currentSection) {
-    // Same tab clicked - toggle view
-    sectionViewState[section] =
-      sectionViewState[section] === 'timeline' ? 'cards' : 'timeline';
-    renderSectionView(section);
-    updateTabIndicator(section);
-  } else {
+  if (section !== currentSection) {
     // Different tab clicked - switch section
     switchSection(section);
   }
@@ -769,6 +957,7 @@ function switchSection(sectionName) {
 
   // Filter offline feeds by current section
   filterOfflineFeeds(sectionName);
+  updateSectionTools();
 }
 
 /**
@@ -817,7 +1006,9 @@ function renderTimelineView(section, grid) {
   grid.classList.add('timeline-mode');
 
   // Get timeline articles (last 30 days, sorted chronologically)
-  const articles = getTimelineArticles(feeds);
+  const query = (sectionSearchState[section] || '').trim().toLowerCase();
+  const allArticles = getTimelineArticles(feeds);
+  const articles = query ? allArticles.filter(article => articleMatchesQuery(article, query)) : allArticles;
 
   if (articles.length === 0) {
     grid.innerHTML = '<div class="timeline-empty"><div class="timeline-empty-icon">📭</div><h3>No recent articles</h3><p>No articles from the last 30 days</p></div>';
@@ -841,8 +1032,8 @@ function renderTimelineView(section, grid) {
     const recencyClass = getRecencyClass(article.pubDate);
     return `
                 <article class="timeline-item ${recencyClass}">
-                  <a href="${escapeHtml(article.link)}" class="timeline-item-link" target="_blank" rel="noopener noreferrer">
-                    ${article.thumbnail ? `<img src="${escapeHtml(article.thumbnail)}" alt="" class="timeline-item-thumbnail" loading="lazy">` : ''}
+                  <a href="${escapeHtml(sanitizeUrl(article.link))}" class="timeline-item-link" target="_blank" rel="noopener noreferrer">
+                    ${article.thumbnail ? `<img src="${escapeHtml(sanitizeUrl(article.thumbnail))}" alt="" class="timeline-item-thumbnail" loading="lazy">` : ''}
                     <div class="timeline-item-content">
                       <div class="timeline-item-title">${escapeHtml(article.title)}</div>
                       ${article.text ? `<div class="timeline-item-text">${escapeHtml(truncateText(article.text))}</div>` : ''}
@@ -859,6 +1050,16 @@ function renderTimelineView(section, grid) {
   `;
 
   grid.innerHTML = timelineHTML;
+}
+
+function articleMatchesQuery(article, query) {
+  const haystack = [
+    article?.title,
+    article?.text,
+    article?.sourceName
+  ].filter(Boolean).join(' ').toLowerCase();
+
+  return haystack.includes(query);
 }
 
 /**
@@ -929,9 +1130,13 @@ function renderCardView(section, grid) {
   const feeds = getSectionFeeds(section);
   if (!feeds) return;
 
+  const query = (sectionSearchState[section] || '').trim().toLowerCase();
+  let renderedCount = 0;
+
   feeds.forEach(feed => {
     // Check if this feed has failed
-    const isFailed = failedFeeds.some(f => f.name === feed.name);
+    const feedKey = getFeedCacheKey(feed);
+    const isFailed = failedFeeds.some(f => f.key === feedKey);
     if (isFailed) {
       // Do not render in main grid, it belongs in offline section
       return;
@@ -942,14 +1147,37 @@ function renderCardView(section, grid) {
     grid.appendChild(card);
 
     // Populate with cached data if available
-    const cachedData = feedDataCache.get(feed.name);
+    const cachedData = feedDataCache.get(feedKey);
+
+    // Apply source/article filtering in card view
+    if (query && !feedMatchesQuery(feed, cachedData, query)) {
+      return;
+    }
+
     if (cachedData) {
       updateFeedCard(card, cachedData, feed.limit);
     }
+
+    renderedCount += 1;
   });
 
   // Sort cards by recency
   sortFeedsByRecencyInGrid(grid);
+
+  if (renderedCount === 0) {
+    grid.innerHTML = '<div class="timeline-empty"><div class="timeline-empty-icon">🔎</div><h3>No matching feeds</h3><p>Try a different filter</p></div>';
+  }
+}
+
+function feedMatchesQuery(feed, cachedData, query) {
+  const sourceMatch = String(feed?.name || '').toLowerCase().includes(query);
+  if (sourceMatch) return true;
+
+  const items = cachedData?.items || [];
+  return items.some(item => {
+    const haystack = [item?.title, item?.text].filter(Boolean).join(' ').toLowerCase();
+    return haystack.includes(query);
+  });
 }
 
 /**
@@ -979,7 +1207,7 @@ function getTimelineArticles(feeds) {
   const allArticles = [];
 
   feeds.forEach(feed => {
-    const cachedData = feedDataCache.get(feed.name);
+    const cachedData = feedDataCache.get(getFeedCacheKey(feed));
     if (cachedData && cachedData.items) {
       // For Reddit feeds, detect pinned posts by checking if early items have older dates
       const items = cachedData.items;
@@ -1164,8 +1392,8 @@ function loadMoreModalItems() {
  */
 function createFeedItemHTML(item, index) {
   return `
-    <a href="${escapeHtml(item.link)}" class="feed-item-link" target="_blank" rel="noopener noreferrer">
-      ${item.thumbnail ? `<img src="${escapeHtml(item.thumbnail)}" alt="" class="feed-item-thumbnail" loading="lazy">` : ''}
+    <a href="${escapeHtml(sanitizeUrl(item.link))}" class="feed-item-link" target="_blank" rel="noopener noreferrer">
+      ${item.thumbnail ? `<img src="${escapeHtml(sanitizeUrl(item.thumbnail))}" alt="" class="feed-item-thumbnail" loading="lazy">` : ''}
       <div class="feed-item-content">
         <div class="feed-item-title">${escapeHtml(item.title)}</div>
         ${item.text ? `<div class="feed-item-text">${escapeHtml(truncateText(item.text))}</div>` : ''}
@@ -1285,6 +1513,33 @@ function escapeHtml(text) {
   const div = document.createElement('div');
   div.textContent = decoded;
   return div.innerHTML;
+}
+
+/**
+ * Ensure URL uses safe protocols for href/src attributes
+ */
+function sanitizeUrl(url) {
+  if (!url || typeof url !== 'string') return '#';
+
+  try {
+    const parsed = new URL(url, window.location.origin);
+    if (!SAFE_PROTOCOLS.has(parsed.protocol)) {
+      return '#';
+    }
+    return parsed.toString();
+  } catch {
+    return '#';
+  }
+}
+
+/**
+ * Build a stable cache key for feeds.
+ * Prefer URL to avoid collisions between similarly named feeds.
+ */
+function getFeedCacheKey(feed) {
+  const normalizedUrl = (feed?.url || '').trim().toLowerCase();
+  if (normalizedUrl) return normalizedUrl;
+  return (feed?.name || '').trim().toLowerCase();
 }
 
 /**

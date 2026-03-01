@@ -64,6 +64,35 @@ Edit `feeds.json` to customize your feed sources:
 
 Edit `public/feeds.js` for client-side configuration.
 
+### Why both `feeds.json` and `public/feeds.js` exist
+
+The project currently has **two runtime paths**:
+
+- `feeds.json` is used by the Flask/server-rendered path (`/flask`, via `main.py`)
+- `public/feeds.js` is used by the modern client-side reader (`/`)
+
+Historically this made it easy to evolve each experience independently, but it can introduce drift.
+
+### Phase-2 config workflow (drift detection + optional sync)
+
+You now have scripts to manage this safely:
+
+- `npm run check:feeds:strict` → validates that `public/feeds.js` matches `feeds.json` and exits non-zero on drift
+- `npm run sync:feeds` → intentionally regenerates `public/feeds.js` from `feeds.json`
+
+Recommended flow:
+
+1. Edit `feeds.json`
+2. Run `npm run sync:feeds`
+3. Run `npm run check:feeds:strict`
+
+### Auto-sync reminders and guards
+
+- **On local commit**: Husky `pre-commit` runs `npm run precommit:feeds`, which refreshes `public/feeds.js` from `feeds.json` and stages the updated file automatically.
+- **On GitHub push/PR**: workflow `.github/workflows/feeds-sync-check.yml` runs `npm run ci:feeds` and fails if `public/feeds.js` is out of sync.
+
+After pulling these changes, run `npm install` once to activate Git hooks via `prepare`.
+
 ## Technical Details
 
 ### Performance
@@ -94,6 +123,15 @@ npm install
 
 # Run locally
 python main.py
+
+# Enforce sync in CI
+npm run check:feeds:strict
+
+# Regenerate client feed config from feeds.json
+npm run sync:feeds
+
+# Auto-sync and verify in one command
+npm run refresh:feeds
 
 # Deploy to Vercel
 vercel deploy

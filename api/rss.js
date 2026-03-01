@@ -1,9 +1,128 @@
 const { XMLParser } = require('fast-xml-parser');
 const sanitizeHtml = require('sanitize-html');
+const dns = require('node:dns').promises;
+const net = require('node:net');
 
 // In-memory cache with 60-minute TTL
 const cache = new Map();
 const CACHE_TTL = 60 * 60 * 1000; // 60 minutes in milliseconds
+const ALLOWED_PROTOCOLS = new Set(['http:', 'https:']);
+const BLOCKED_HOSTS = new Set([
+  'localhost',
+  'localhost.localdomain',
+  '0.0.0.0',
+  '0',
+  '127.0.0.1',
+  '::1',
+  '169.254.169.254',
+  'metadata.google.internal'
+]);
+
+/**
+ * Check if an IPv4 address is private/internal/reserved.
+ * @param {string} ip
+ * @returns {boolean}
+ */
+function isPrivateIpv4(ip) {
+  const parts = ip.split('.').map(Number);
+  if (parts.length !== 4 || parts.some(Number.isNaN)) return true;
+
+  const [a, b] = parts;
+
+  // RFC1918 + loopback + link-local + special-use blocks
+  if (a === 10) return true;
+  if (a === 127) return true;
+  if (a === 0) return true;
+  if (a === 169 && b === 254) return true;
+  if (a === 172 && b >= 16 && b <= 31) return true;
+  if (a === 192 && b === 168) return true;
+  if (a >= 224) return true; // multicast/reserved
+
+  return false;
+}
+
+/**
+ * Check if an IPv6 address is private/internal/reserved.
+ * @param {string} ip
+ * @returns {boolean}
+ */
+function isPrivateIpv6(ip) {
+  const normalized = ip.toLowerCase();
+
+  if (normalized === '::1' || normalized === '::') return true;
+  if (normalized.startsWith('fc') || normalized.startsWith('fd')) return true; // unique local
+  if (normalized.startsWith('fe80')) return true; // link-local
+
+  return false;
+}
+
+/**
+ * Check whether IP is private/internal.
+ * @param {string} ip
+ * @returns {boolean}
+ */
+function isPrivateIp(ip) {
+  const type = net.isIP(ip);
+  if (type === 4) return isPrivateIpv4(ip);
+  if (type === 6) return isPrivateIpv6(ip);
+  return true;
+}
+
+/**
+ * Validate outbound feed URL for SSRF safety.
+ * @param {string} rawUrl
+ * @returns {Promise<URL>}
+ */
+async function validateFeedUrl(rawUrl) {
+  if (!rawUrl || typeof rawUrl !== 'string') {
+    throw new Error('Missing feedUrl parameter');
+  }
+
+  if (rawUrl.length > 2048) {
+    throw new Error('feedUrl is too long');
+  }
+
+  let parsed;
+  try {
+    parsed = new URL(rawUrl);
+  } catch {
+    throw new Error('Invalid feedUrl format');
+  }
+
+  if (!ALLOWED_PROTOCOLS.has(parsed.protocol)) {
+    throw new Error('Only http/https feed URLs are allowed');
+  }
+
+  const hostname = parsed.hostname?.toLowerCase();
+  if (!hostname) {
+    throw new Error('feedUrl must include a hostname');
+  }
+
+  if (BLOCKED_HOSTS.has(hostname)) {
+    throw new Error('Blocked feed host');
+  }
+
+  // If hostname is already an IP literal, validate directly.
+  if (net.isIP(hostname)) {
+    if (isPrivateIp(hostname)) {
+      throw new Error('Blocked private/internal IP');
+    }
+    return parsed;
+  }
+
+  // Resolve DNS and ensure no private/internal targets are returned.
+  const resolved = await dns.lookup(hostname, { all: true, verbatim: true });
+  if (!resolved || resolved.length === 0) {
+    throw new Error('Unable to resolve feed host');
+  }
+
+  const hasPrivateTarget = resolved.some(record => isPrivateIp(record.address));
+  if (hasPrivateTarget) {
+    throw new Error('Blocked private/internal feed host resolution');
+  }
+
+  return parsed;
+}
 
 /**
  * Sanitize text by stripping all HTML tags, images, scripts
@@ -300,30 +419,27 @@ module.exports = async (req, res) => {
   
   const { feedUrl, limit = '5' } = req.query;
   
-  // Validate feedUrl parameter
-  if (!feedUrl) {
-    return res.status(400).json({ error: 'Missing feedUrl parameter' });
-  }
-  
-  // Validate URL format
+  // Validate feedUrl parameter + SSRF safety
+  let validatedUrl;
   try {
-    new URL(feedUrl);
-  } catch {
-    return res.status(400).json({ error: 'Invalid feedUrl format' });
+    const parsed = await validateFeedUrl(feedUrl);
+    validatedUrl = parsed.toString();
+  } catch (error) {
+    return res.status(400).json({ error: error.message || 'Invalid feedUrl' });
   }
   
   // Parse and validate limit (increased to 50 for modal infinite scroll support)
   const parsedLimit = Math.min(Math.max(parseInt(limit, 10) || 5, 1), 50);
   
   try {
-    const data = await fetchFeed(feedUrl, parsedLimit);
+    const data = await fetchFeed(validatedUrl, parsedLimit);
     
     // Set cache headers
     res.setHeader('Cache-Control', 'public, max-age=300, s-maxage=600');
     
     return res.status(200).json(data);
   } catch (error) {
-    console.error(`[Error] ${feedUrl}:`, error.message);
+    console.error(`[Error] ${validatedUrl}:`, error.message);
     
     // Return appropriate error status
     if (error.message.includes('HTTP 404')) {

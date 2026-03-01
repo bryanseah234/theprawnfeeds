@@ -3,54 +3,226 @@
     {
       "title": "Blogs",
       "feeds": [
-        {"name": "Guan Jie", "url": "https://guanjiefung.com/feed/", "limit": 3},
-        {"name": "Raymond Yeh", "url": "https://geek.sg/rss", "limit": 3},
-        {"name": "daniel", "url": "https://daniel.haxx.se/blog/feed/", "limit": 3},
-        {"name": "awakened1712", "url": "https://awakened1712.github.io/feed.xml", "limit": 3},
-        {"name": "chooyikai", "url": "https://chooyikai.github.io/feed.xml", "limit": 3},
-        {"name": "Spaceraccoon", "url": "https://spaceraccoon.dev/posts/feed.xml", "limit": 3},
-        {"name": "Rob Mensching", "url": "https://robmensching.com/blog/rss.xml", "limit": 3},
-        {"name": "Ali", "url": "https://blog.ali.dev/index.xml", "limit": 3},
-        {"name": "maia", "url": "https://maia.crimew.gay/feed.xml", "limit": 3},
-        {"name": "chewingwrite", "url": "https://chewingwrite.wordpress.com/feed/", "limit": 3},
-        {"name": "Making Building Stuff", "url": "https://makingbuildingstuff.blogspot.com/feeds/posts/default?alt=rss", "limit": 3},
-        {"name": "eva", "url": "https://kibty.town/blog.rss", "limit": 3},
-        {"name": "MrBruh", "url": "https://mrbruh.com/index.xml", "limit": 3},
-        {"name": "Hillel Wayne", "url": "https://www.hillelwayne.com/index.xml", "limit": 3},
-        {"name": "Bounded Rationality", "url": "https://bjlkeng.io//rss.xml", "limit": 3},
-        {"name": "On my Om", "url": "https://om.co/feed/", "limit": 3},
-        {"name": "Brian Lovin", "url": "https://brianlovin.com/writing/rss.xml", "limit": 3},
-        {"name": "David Lim", "url": "https://davidlhw.dev/rss.xml", "limit": 3},
-        {"name": "The Blue and Gold", "url": "https://www.theblueandgold.sg/blog-feed.xml", "limit": 3},
-        {"name": "Avery Lim", "url": "https://blog.averylim.com/rss.xml", "limit": 3},
-        {"name": "ntietz", "url": "https://ntietz.com/atom.xml", "limit": 3},
-        {"name": "sadgrl", "url": "https://sadgrl.online/posts/rss.xml", "limit": 3},
-        {"name": "Vaughn Tan", "url": "https://vaughntan.org/feed.rss", "limit": 3},
-        {"name": "freyavie", "url": "https://freyavie.blog/feed/?type=rss", "limit": 3},
-        {"name": "ryeones", "url": "https://www.ryeones.com/feed.xml", "limit": 3},
-        {"name": "David Perell", "url": "https://perell.com/feed/", "limit": 3},
-        {"name": "Sam Altman", "url": "https://blog.samaltman.com/posts.atom", "limit": 3},
-        {"name": "Prasatt", "url": "https://prasatt.me/feed/", "limit": 3},
-        {"name": "Rebecca Toh", "url": "https://rebeccatoh.pika.page/posts_feed", "limit": 3},
-        {"name": "Rosipov", "url": "https://rosipov.com/atom.xml", "limit": 3},
-        {"name": "Small Things Mostly", "url": "https://smallthingsmostly.me/feed.rss", "limit": 3}
+        {
+          "name": "Guan Jie",
+          "url": "https://guanjiefung.com/feed/",
+          "limit": 3
+        },
+        {
+          "name": "Raymond Yeh",
+          "url": "https://geek.sg/rss",
+          "limit": 3
+        },
+        {
+          "name": "daniel",
+          "url": "https://daniel.haxx.se/blog/feed/",
+          "limit": 3
+        },
+        {
+          "name": "awakened1712",
+          "url": "https://awakened1712.github.io/feed.xml",
+          "limit": 3
+        },
+        {
+          "name": "chooyikai",
+          "url": "https://chooyikai.github.io/feed.xml",
+          "limit": 3
+        },
+        {
+          "name": "Spaceraccoon",
+          "url": "https://spaceraccoon.dev/posts/feed.xml",
+          "limit": 3
+        },
+        {
+          "name": "Rob Mensching",
+          "url": "https://robmensching.com/blog/rss.xml",
+          "limit": 3
+        },
+        {
+          "name": "Ali",
+          "url": "https://blog.ali.dev/index.xml",
+          "limit": 3
+        },
+        {
+          "name": "maia",
+          "url": "https://maia.crimew.gay/feed.xml",
+          "limit": 3
+        },
+        {
+          "name": "chewingwrite",
+          "url": "https://chewingwrite.wordpress.com/feed/",
+          "limit": 3
+        },
+        {
+          "name": "Making Building Stuff",
+          "url": "https://makingbuildingstuff.blogspot.com/feeds/posts/default?alt=rss",
+          "limit": 3
+        },
+        {
+          "name": "eva",
+          "url": "https://kibty.town/blog.rss",
+          "limit": 3
+        },
+        {
+          "name": "MrBruh",
+          "url": "https://mrbruh.com/index.xml",
+          "limit": 3
+        },
+        {
+          "name": "Hillel Wayne",
+          "url": "https://www.hillelwayne.com/index.xml",
+          "limit": 3
+        },
+        {
+          "name": "Bounded Rationality",
+          "url": "https://bjlkeng.io//rss.xml",
+          "limit": 3
+        },
+        {
+          "name": "On my Om",
+          "url": "https://om.co/feed/",
+          "limit": 3
+        },
+        {
+          "name": "Brian Lovin",
+          "url": "https://brianlovin.com/writing/rss.xml",
+          "limit": 3
+        },
+        {
+          "name": "David Lim",
+          "url": "https://davidlhw.dev/rss.xml",
+          "limit": 3
+        },
+        {
+          "name": "The Blue and Gold",
+          "url": "https://www.theblueandgold.sg/blog-feed.xml",
+          "limit": 3
+        },
+        {
+          "name": "Avery Lim",
+          "url": "https://blog.averylim.com/rss.xml",
+          "limit": 3
+        },
+        {
+          "name": "ntietz",
+          "url": "https://ntietz.com/atom.xml",
+          "limit": 3
+        },
+        {
+          "name": "sadgrl",
+          "url": "https://sadgrl.online/posts/rss.xml",
+          "limit": 3
+        },
+        {
+          "name": "Vaughn Tan",
+          "url": "https://vaughntan.org/feed.rss",
+          "limit": 3
+        },
+        {
+          "name": "freyavie",
+          "url": "https://freyavie.blog/feed/?type=rss",
+          "limit": 3
+        },
+        {
+          "name": "ryeones",
+          "url": "https://www.ryeones.com/feed.xml",
+          "limit": 3
+        },
+        {
+          "name": "David Perell",
+          "url": "https://perell.com/feed/",
+          "limit": 3
+        },
+        {
+          "name": "Sam Altman",
+          "url": "https://blog.samaltman.com/posts.atom",
+          "limit": 3
+        },
+        {
+          "name": "Prasatt",
+          "url": "https://prasatt.me/feed/",
+          "limit": 3
+        },
+        {
+          "name": "Rebecca Toh",
+          "url": "https://rebeccatoh.pika.page/posts_feed",
+          "limit": 3
+        },
+        {
+          "name": "Rosipov",
+          "url": "https://rosipov.com/atom.xml",
+          "limit": 3
+        },
+        {
+          "name": "Small Things Mostly",
+          "url": "https://smallthingsmostly.me/feed.rss",
+          "limit": 3
+        }
       ]
     },
     {
       "title": "Security & Tech News",
       "feeds": [
-        {"name": "Hackread", "url": "https://hackread.com/feed/", "limit": 5},
-        {"name": "Check Point Research", "url": "https://research.checkpoint.com/feed", "limit": 5},
-        {"name": "ZERO DAY", "url": "https://www.zetter-zeroday.com/rss/", "limit": 5},
-        {"name": "Unit 42", "url": "https://unit42.paloaltonetworks.com/category/top-cyberthreats/feed/", "limit": 5},
-        {"name": "Microsoft", "url": "https://blogs.microsoft.com/on-the-issues/feed/", "limit": 5},
-        {"name": "Hive Mind Security", "url": "https://hivemindsecurity.com/blog?format=rss", "limit": 5},
-        {"name": "Zack Whittaker", "url": "https://techcrunch.com/author/zack-whittaker/feed/", "limit": 5},
-        {"name": "Labs Detectify", "url": "https://labs.detectify.com/feed", "limit": 5},
-        {"name": "Schneier on Security", "url": "https://www.schneier.com/feed/", "limit": 5},
-        {"name": "Sector035", "url": "https://sector035.nl/articles.rss", "limit": 5},
-        {"name": "Security Affairs", "url": "https://securityaffairs.com/feed", "limit": 5},
-        {"name": "Collecting Flags", "url": "https://collectingflags.com/feed/", "limit": 5}
+        {
+          "name": "Hackread",
+          "url": "https://hackread.com/feed/",
+          "limit": 5
+        },
+        {
+          "name": "Check Point Research",
+          "url": "https://research.checkpoint.com/feed",
+          "limit": 5
+        },
+        {
+          "name": "ZERO DAY",
+          "url": "https://www.zetter-zeroday.com/rss/",
+          "limit": 5
+        },
+        {
+          "name": "Unit 42",
+          "url": "https://unit42.paloaltonetworks.com/category/top-cyberthreats/feed/",
+          "limit": 5
+        },
+        {
+          "name": "Microsoft",
+          "url": "https://blogs.microsoft.com/on-the-issues/feed/",
+          "limit": 5
+        },
+        {
+          "name": "Hive Mind Security",
+          "url": "https://hivemindsecurity.com/blog?format=rss",
+          "limit": 5
+        },
+        {
+          "name": "Zack Whittaker",
+          "url": "https://techcrunch.com/author/zack-whittaker/feed/",
+          "limit": 5
+        },
+        {
+          "name": "Labs Detectify",
+          "url": "https://labs.detectify.com/feed",
+          "limit": 5
+        },
+        {
+          "name": "Schneier on Security",
+          "url": "https://www.schneier.com/feed/",
+          "limit": 5
+        },
+        {
+          "name": "Sector035",
+          "url": "https://sector035.nl/articles.rss",
+          "limit": 5
+        },
+        {
+          "name": "Security Affairs",
+          "url": "https://securityaffairs.com/feed",
+          "limit": 5
+        },
+        {
+          "name": "Collecting Flags",
+          "url": "https://collectingflags.com/feed/",
+          "limit": 5
+        }
       ]
     }
   ],
@@ -63,13 +235,750 @@
     "dumbphones"
   ],
   "youtube_channels": [
-    {"name": "Seytonic", "channel_id": "UCW6xlqxSY3gGur4PkGPEUeA", "category": "Security/Hacking", "limit": 3},
-    {"name": "Low Level", "channel_id": "UC6biysICWOJ-C3P4Tyeggzg", "category": "Programming/Low-Level", "limit": 3},
-    {"name": "Dev Detour", "channel_id": "UCXSFnQc5niQR7jHMf0U7aQA", "category": "Programming/Dev", "limit": 3},
-    {"name": "Fireship", "channel_id": "UCsBjURrPoezykLs9EqgamOA", "category": "Programming/Web Dev", "limit": 3},
-    {"name": "Computerphile", "channel_id": "UC9-y-6csu5WGm29I7JiwpnA", "category": "Computer Science", "limit": 3},
-    {"name": "Hak5", "channel_id": "UC3s0BtrBJpwNDaflRSoiieQ", "category": "Security/Hacking", "limit": 3},
-    {"name": "Cyb3rMaddy", "channel_id": "UCgd5-BWtbgOw5Hx2wP3qxzg", "category": "Cybersecurity", "limit": 3}
+    {
+      "name": "Seytonic",
+      "channel_id": "UCW6xlqxSY3gGur4PkGPEUeA",
+      "category": "Security/Hacking",
+      "limit": 3
+    },
+    {
+      "name": "Low Level",
+      "channel_id": "UC6biysICWOJ-C3P4Tyeggzg",
+      "category": "Programming/Low-Level",
+      "limit": 3
+    },
+    {
+      "name": "Dev Detour",
+      "channel_id": "UCXSFnQc5niQR7jHMf0U7aQA",
+      "category": "Programming/Dev",
+      "limit": 3
+    },
+    {
+      "name": "Fireship",
+      "channel_id": "UCsBjURrPoezykLs9EqgamOA",
+      "category": "Programming/Web Dev",
+      "limit": 3
+    },
+    {
+      "name": "Computerphile",
+      "channel_id": "UC9-y-6csu5WGm29I7JiwpnA",
+      "category": "Computer Science",
+      "limit": 3
+    },
+    {
+      "name": "Hak5",
+      "channel_id": "UC3s0BtrBJpwNDaflRSoiieQ",
+      "category": "Security/Hacking",
+      "limit": 3
+    },
+    {
+      "name": "Cyb3rMaddy",
+      "channel_id": "UCgd5-BWtbgOw5Hx2wP3qxzg",
+      "category": "Cybersecurity",
+      "limit": 3
+    },
+    {
+      "name": "jl ౨ৎ",
+      "channel_id": "UCo27y8yyaqVVHLKXwRFn0Qg",
+      "category": "General",
+      "limit": 3
+    },
+    {
+      "name": "TAFLINE ANG XIN TING _",
+      "channel_id": "UC0-UJL01tIan3g7RGsOTTfA",
+      "category": "General",
+      "limit": 3
+    },
+    {
+      "name": "Benjamin Gan",
+      "channel_id": "UC5AOC776HwOIy6gp68Xx0sA",
+      "category": "General",
+      "limit": 3
+    },
+    {
+      "name": "Trevor Tan",
+      "channel_id": "UCYxG-71K9lb1-iMch9tuCtA",
+      "category": "General",
+      "limit": 3
+    },
+    {
+      "name": "robynie",
+      "channel_id": "UCS1iN55lQwNR6xFZFVywlNg",
+      "category": "General",
+      "limit": 3
+    },
+    {
+      "name": "Edison Er",
+      "channel_id": "UCcmxDExKTBXF6_h2Wv1ldXw",
+      "category": "General",
+      "limit": 3
+    },
+    {
+      "name": "Yan Tong Thia",
+      "channel_id": "UCIZlhEy7saD_erYadyH_Vsg",
+      "category": "General",
+      "limit": 3
+    },
+    {
+      "name": "YunChu Zhao",
+      "channel_id": "UCf16hQE2FZ-T9JXQ5UTQgJw",
+      "category": "General",
+      "limit": 3
+    },
+    {
+      "name": "Laurel Tay",
+      "channel_id": "UCWnFFNhJpFkfJE26r_Mj9tg",
+      "category": "General",
+      "limit": 3
+    },
+    {
+      "name": "Jerry Chua",
+      "channel_id": "UCIHgiHd5N0gB0aYZXt5Qs4A",
+      "category": "General",
+      "limit": 3
+    },
+    {
+      "name": "Mokkie Mok",
+      "channel_id": "UCz7-s-2gMaF8kJhRKu1Nqdw",
+      "category": "General",
+      "limit": 3
+    },
+    {
+      "name": "Charmaine Chan",
+      "channel_id": "UCvNStOEVFCg6mv2ASUxz14g",
+      "category": "General",
+      "limit": 3
+    },
+    {
+      "name": "Xenia Zan",
+      "channel_id": "UCsWOf7tccA81_Ehk0kcoayA",
+      "category": "General",
+      "limit": 3
+    },
+    {
+      "name": "Lee Sin Yang",
+      "channel_id": "UCqN4v8E5zISOVxpe_SDvjZw",
+      "category": "General",
+      "limit": 3
+    },
+    {
+      "name": "Sher",
+      "channel_id": "UCiPHzGHOgmE2u8G28q1eaFA",
+      "category": "General",
+      "limit": 3
+    },
+    {
+      "name": "soon jiaying",
+      "channel_id": "UCH9_j1SdXioCQZYn7q7U2Mg",
+      "category": "General",
+      "limit": 3
+    },
+    {
+      "name": "Claris Yeo",
+      "channel_id": "UC3nvRRptDf47tzegku5O-Jw",
+      "category": "General",
+      "limit": 3
+    },
+    {
+      "name": "Sing Pearlyn",
+      "channel_id": "UC3sP9D_XV2h3Hxs7ZbtkrLw",
+      "category": "General",
+      "limit": 3
+    },
+    {
+      "name": "melfunctional",
+      "channel_id": "UCxSsrATkH6PuDHVsW1AtLhw",
+      "category": "General",
+      "limit": 3
+    },
+    {
+      "name": "Kang Chenghua",
+      "channel_id": "UCHiWj2OF51Pl8DpWZLFSR2g",
+      "category": "General",
+      "limit": 3
+    },
+    {
+      "name": "vÄnZz",
+      "channel_id": "UCMKqV9AgnI-HOvt9lKB7DTw",
+      "category": "General",
+      "limit": 3
+    },
+    {
+      "name": "vindy",
+      "channel_id": "UC1QNP3YRjnf0FftpKreGyPw",
+      "category": "General",
+      "limit": 3
+    },
+    {
+      "name": "Podles",
+      "channel_id": "UC8y84FCMAaSlWcb0aWQJTEA",
+      "category": "General",
+      "limit": 3
+    },
+    {
+      "name": "tricia 🤍",
+      "channel_id": "UCCnMJ5SCFnfUYnjNHypLkKA",
+      "category": "General",
+      "limit": 3
+    },
+    {
+      "name": "Leora Fun",
+      "channel_id": "UC41cQwY0zfxc60dOXU3C6Mg",
+      "category": "General",
+      "limit": 3
+    },
+    {
+      "name": "jodie",
+      "channel_id": "UC_zuOelxPFzTzVEvZ7BFM_w",
+      "category": "General",
+      "limit": 3
+    },
+    {
+      "name": "co",
+      "channel_id": "UCtkuTncvIml2iVFNVos6kWg",
+      "category": "General",
+      "limit": 3
+    },
+    {
+      "name": "Matilde Simão",
+      "channel_id": "UCq_9K70C97AbcdpSGkT_KcA",
+      "category": "General",
+      "limit": 3
+    },
+    {
+      "name": "Rosie Ching",
+      "channel_id": "UC-vSalihAJFq0o8MljokadQ",
+      "category": "General",
+      "limit": 3
+    },
+    {
+      "name": "itshwehwe_",
+      "channel_id": "UC-SKx5XXBnsYHpnJefF9q4g",
+      "category": "General",
+      "limit": 3
+    },
+    {
+      "name": "shin",
+      "channel_id": "UCKTfHnm0AL0PovtVzmeQuhg",
+      "category": "General",
+      "limit": 3
+    },
+    {
+      "name": "reena's diary",
+      "channel_id": "UC3fwIyFHndC5PGDEGuwKtcw",
+      "category": "General",
+      "limit": 3
+    },
+    {
+      "name": "elu[エル]",
+      "channel_id": "UCSHjgmMQyFu243E3WiHZWjg",
+      "category": "General",
+      "limit": 3
+    },
+    {
+      "name": "kristy 🦋",
+      "channel_id": "UC9PGqxl6l7Vl39IMniJhZUg",
+      "category": "General",
+      "limit": 3
+    },
+    {
+      "name": "eleanor ",
+      "channel_id": "UCKPrS8koced943A6ul0Tx1Q",
+      "category": "General",
+      "limit": 3
+    },
+    {
+      "name": "Shih-Fen Cheng",
+      "channel_id": "UCzL-x47dy3_HOHjzQnN0Hug",
+      "category": "General",
+      "limit": 3
+    },
+    {
+      "name": "Xeniazan",
+      "channel_id": "UCnMy2mJRWUbRuho-izM-JWA",
+      "category": "General",
+      "limit": 3
+    },
+    {
+      "name": "JFF Production",
+      "channel_id": "UCf-o9bTuY3v0ZB6pTzg4q3Q",
+      "category": "General",
+      "limit": 3
+    },
+    {
+      "name": "jade del lai",
+      "channel_id": "UCQWL7hLMNKGsebjofBmHQeg",
+      "category": "General",
+      "limit": 3
+    },
+    {
+      "name": "yu xi",
+      "channel_id": "UC42QAp3OumD53uMkBeszPpA",
+      "category": "General",
+      "limit": 3
+    },
+    {
+      "name": "Nicole Low",
+      "channel_id": "UCIypvWnouvlctb50RdcgVjQ",
+      "category": "General",
+      "limit": 3
+    },
+    {
+      "name": "Chee Aun Lim",
+      "channel_id": "UC0Lf3ogeJG1P7BuZB--Fltg",
+      "category": "General",
+      "limit": 3
+    },
+    {
+      "name": "vlogger vic",
+      "channel_id": "UCJW6Qhon6dycfi8yV7fDRag",
+      "category": "General",
+      "limit": 3
+    },
+    {
+      "name": "Tho Yow Kin",
+      "channel_id": "UC_ASrI3lDMLTnaEOnrrthPw",
+      "category": "General",
+      "limit": 3
+    },
+    {
+      "name": "jellybunniii",
+      "channel_id": "UC5cbvPOVa0hERXeEKUZiPuQ",
+      "category": "General",
+      "limit": 3
+    },
+    {
+      "name": "Mark Lim",
+      "channel_id": "UCCGHLup0bJ4ag5ZfH23ZNEQ",
+      "category": "General",
+      "limit": 3
+    },
+    {
+      "name": "Natasha Chang",
+      "channel_id": "UCkJt_7wHOZhnKUZy49sL9aQ",
+      "category": "General",
+      "limit": 3
+    },
+    {
+      "name": "SMU Foundations of Cybersecurity",
+      "channel_id": "UCWUg35J-R1irhgR1mjEiiQA",
+      "category": "General",
+      "limit": 3
+    },
+    {
+      "name": "2013ION",
+      "channel_id": "UCHDXXNcMyv6NQQ2ljUvQZig",
+      "category": "General",
+      "limit": 3
+    },
+    {
+      "name": "chi-e",
+      "channel_id": "UCl7442TgDCJEBcKpFiEadtA",
+      "category": "General",
+      "limit": 3
+    },
+    {
+      "name": "yunchuuu",
+      "channel_id": "UC2ZAWO5jZdfyjNqaPjGSSEg",
+      "category": "General",
+      "limit": 3
+    },
+    {
+      "name": "Jocelyn Wu",
+      "channel_id": "UCp9cWrQ5b74OZyUGebKZN3g",
+      "category": "General",
+      "limit": 3
+    },
+    {
+      "name": "fihlms",
+      "channel_id": "UCSzSK_VkFHuQS7EHmCnFWTQ",
+      "category": "General",
+      "limit": 3
+    },
+    {
+      "name": "jenni",
+      "channel_id": "UCFmFsNrjEEHZxTe8M7JoOqw",
+      "category": "General",
+      "limit": 3
+    },
+    {
+      "name": "VeryEvil CuteBunny",
+      "channel_id": "UCA1ysl5io4k-8Q_79xxmg7Q",
+      "category": "General",
+      "limit": 3
+    },
+    {
+      "name": "joannehbu",
+      "channel_id": "UCyfc0RXLRsEsG0nFrhSaZgA",
+      "category": "General",
+      "limit": 3
+    },
+    {
+      "name": "h2economicstextbook",
+      "channel_id": "UCND58UjvLqKhS92V-BMCeXw",
+      "category": "General",
+      "limit": 3
+    },
+    {
+      "name": "BuildingBloCS SG",
+      "channel_id": "UCWQmrxGbwU4jFBCJf7rPoFQ",
+      "category": "General",
+      "limit": 3
+    },
+    {
+      "name": "jean tay",
+      "channel_id": "UCe0mRl0jV6omyJFHEvfbQEA",
+      "category": "General",
+      "limit": 3
+    },
+    {
+      "name": "g",
+      "channel_id": "UCafMEE3o2AS6ONfOAYdXFfA",
+      "category": "General",
+      "limit": 3
+    },
+    {
+      "name": "sharice",
+      "channel_id": "UCD1yjRnZrbrq5446S2K_9-w",
+      "category": "General",
+      "limit": 3
+    },
+    {
+      "name": "CTF Live",
+      "channel_id": "UC1ZWUVASJT9CcMT_u8TkrFw",
+      "category": "General",
+      "limit": 3
+    },
+    {
+      "name": "RealKrazyWoman",
+      "channel_id": "UCTcYV7rrFw4VhHDWaY0HQrA",
+      "category": "General",
+      "limit": 3
+    },
+    {
+      "name": "jessica chin",
+      "channel_id": "UCpzxqgi10zE63b3pNDTj_nw",
+      "category": "General",
+      "limit": 3
+    },
+    {
+      "name": "bypearlyn",
+      "channel_id": "UCf3EEx4IWI_zyg_470labAg",
+      "category": "General",
+      "limit": 3
+    },
+    {
+      "name": "𝓉𝔀𝒾𝓉𝒽",
+      "channel_id": "UC-AdQ4EWz4X39hAIYRDX_cg",
+      "category": "General",
+      "limit": 3
+    },
+    {
+      "name": "ariel👻",
+      "channel_id": "UCT5UiTPrtiUXZtZ42EheCNQ",
+      "category": "General",
+      "limit": 3
+    },
+    {
+      "name": "baugeteets",
+      "channel_id": "UC1nt1DxDf34A43HUSuFU5eg",
+      "category": "General",
+      "limit": 3
+    },
+    {
+      "name": "kai ray",
+      "channel_id": "UCYJSuHhzkcLNeQQSzlKDR8g",
+      "category": "General",
+      "limit": 3
+    },
+    {
+      "name": "Hoover",
+      "channel_id": "UCUyI28UEfBAhL80NhWMjcZQ",
+      "category": "General",
+      "limit": 3
+    },
+    {
+      "name": "dawn goh",
+      "channel_id": "UC0KdNZ5vk_B2y8MukymAerQ",
+      "category": "General",
+      "limit": 3
+    },
+    {
+      "name": "ren ki",
+      "channel_id": "UCfEIoxb6dlnlW4wG8c7fcRw",
+      "category": "General",
+      "limit": 3
+    },
+    {
+      "name": "Wei Ling Tan",
+      "channel_id": "UCTMFAoobOM7GaASzVdopxNw",
+      "category": "General",
+      "limit": 3
+    },
+    {
+      "name": "C!o 🍧",
+      "channel_id": "UCH7VYFk4JA85hPH7BL0KqLQ",
+      "category": "General",
+      "limit": 3
+    },
+    {
+      "name": "xinni chen",
+      "channel_id": "UCwTviZxiI7YVBVXK8gGLFYQ",
+      "category": "General",
+      "limit": 3
+    },
+    {
+      "name": "sincerely, faith 🛒",
+      "channel_id": "UCvYvyAfRNSAi5KE0U63C75Q",
+      "category": "General",
+      "limit": 3
+    },
+    {
+      "name": "milkcrumbles",
+      "channel_id": "UCByGjS5OHO0UAMokmbbLvQQ",
+      "category": "General",
+      "limit": 3
+    },
+    {
+      "name": "joyce",
+      "channel_id": "UCqN_gd8Hezi4vXs0bhsjsNg",
+      "category": "General",
+      "limit": 3
+    },
+    {
+      "name": "zahra yasmin",
+      "channel_id": "UC22ZjzdOe8LS4L16BxtsIug",
+      "category": "General",
+      "limit": 3
+    },
+    {
+      "name": "carrine",
+      "channel_id": "UCfayXqe-0isPP3_w7jv9Ymw",
+      "category": "General",
+      "limit": 3
+    },
+    {
+      "name": "vividay ☻ ",
+      "channel_id": "UCqxZNt5DPbgjnhNkyZYsGaQ",
+      "category": "General",
+      "limit": 3
+    },
+    {
+      "name": "a katastrophe",
+      "channel_id": "UCPhEeBSa1ZdvYoQ5qpBBBhA",
+      "category": "General",
+      "limit": 3
+    },
+    {
+      "name": "ANDREA E. ༏ 𓃯𓀃",
+      "channel_id": "UCxZXFeTH_ipGBJrKD2g6iLQ",
+      "category": "General",
+      "limit": 3
+    },
+    {
+      "name": "hwentures",
+      "channel_id": "UC1eA7UMiLIhZAT9Cz5Y-vyA",
+      "category": "General",
+      "limit": 3
+    },
+    {
+      "name": "Temasek Hall",
+      "channel_id": "UC1q5IX93maOl-FVR_wJo77g",
+      "category": "General",
+      "limit": 3
+    },
+    {
+      "name": "Lukas Ian Tay",
+      "channel_id": "UCnvu8t1YOtIhkgrolk2BPqw",
+      "category": "General",
+      "limit": 3
+    },
+    {
+      "name": "taryn",
+      "channel_id": "UCu2Vt71Qt5IabsPB9Pr5Cww",
+      "category": "General",
+      "limit": 3
+    },
+    {
+      "name": "Sarah",
+      "channel_id": "UCTu8Z2VLycFsWUw15XeSpCA",
+      "category": "General",
+      "limit": 3
+    },
+    {
+      "name": "jtwonggg photography",
+      "channel_id": "UCSvbgwhAYE0WsdAk4db30Ow",
+      "category": "General",
+      "limit": 3
+    },
+    {
+      "name": "weinoten",
+      "channel_id": "UCCO3El--cMK-wrlXMZ_fx1Q",
+      "category": "General",
+      "limit": 3
+    },
+    {
+      "name": "andreallyy",
+      "channel_id": "UCEuBVaqa0y5bKY5vIML5pdA",
+      "category": "General",
+      "limit": 3
+    },
+    {
+      "name": "Kohyee",
+      "channel_id": "UCTf2LZwoua873N7VFGw-sUw",
+      "category": "General",
+      "limit": 3
+    },
+    {
+      "name": "Sharenun",
+      "channel_id": "UCe_yf4jX2EvBnz7FaGuQ2Rg",
+      "category": "General",
+      "limit": 3
+    },
+    {
+      "name": "okayyan",
+      "channel_id": "UCSPZE63iz5jKLcGxgc_Xq8w",
+      "category": "General",
+      "limit": 3
+    },
+    {
+      "name": "ying xin ",
+      "channel_id": "UCt7gY-vVaR-5nGIMFhptLvA",
+      "category": "General",
+      "limit": 3
+    },
+    {
+      "name": "Computational Thinking at SMU",
+      "channel_id": "UCTzqoybeq893ko72GFYb0pA",
+      "category": "General",
+      "limit": 3
+    },
+    {
+      "name": "yhngg",
+      "channel_id": "UCqJX_if3hGnosDNom2RsOVA",
+      "category": "General",
+      "limit": 3
+    },
+    {
+      "name": "kimchi xuan",
+      "channel_id": "UCqSOOAJdpSkNM_EofAtD17g",
+      "category": "General",
+      "limit": 3
+    },
+    {
+      "name": "KIZO",
+      "channel_id": "UCcAK85lNG8rlrps20iLBk7g",
+      "category": "General",
+      "limit": 3
+    },
+    {
+      "name": "jiaxuan",
+      "channel_id": "UCOL_5GOV67YlvnChH1MIVcg",
+      "category": "General",
+      "limit": 3
+    },
+    {
+      "name": "✨GLOW GLAD 潘敏✨",
+      "channel_id": "UCwa_yLcenbv1k_D9DKcERDw",
+      "category": "General",
+      "limit": 3
+    },
+    {
+      "name": "shyenel",
+      "channel_id": "UC6rpFXKp21ivDUYlzTYwGcg",
+      "category": "General",
+      "limit": 3
+    },
+    {
+      "name": "Ka Yuet",
+      "channel_id": "UCctGIclQyptSoWFbsuacLZw",
+      "category": "General",
+      "limit": 3
+    },
+    {
+      "name": "love, chern ☁️",
+      "channel_id": "UCopqX-UG0KhGIHD3W-xfzXA",
+      "category": "General",
+      "limit": 3
+    },
+    {
+      "name": "jaewen",
+      "channel_id": "UCSpI1VpzIQxj3TVZPHE_qUQ",
+      "category": "General",
+      "limit": 3
+    },
+    {
+      "name": "Anton Repponen",
+      "channel_id": "UCJu3dzsLZckpUopr8UyBKMg",
+      "category": "General",
+      "limit": 3
+    },
+    {
+      "name": "nadventures",
+      "channel_id": "UCQ4zzTxgcQrr0c5iSREnc_w",
+      "category": "General",
+      "limit": 3
+    },
+    {
+      "name": "kylnngx",
+      "channel_id": "UC4c4-eICO-AkaXGxYipYRtQ",
+      "category": "General",
+      "limit": 3
+    },
+    {
+      "name": "studyminz",
+      "channel_id": "UC9uD413Ba576ZuXoTMuy6cQ",
+      "category": "General",
+      "limit": 3
+    },
+    {
+      "name": "apelee",
+      "channel_id": "UCqGTKY0rBqUPKUbwC7dct5w",
+      "category": "General",
+      "limit": 3
+    },
+    {
+      "name": "Ryan Tay",
+      "channel_id": "UCVuU4fxy_JmDcViDOvnCHtQ",
+      "category": "General",
+      "limit": 3
+    },
+    {
+      "name": "vii ♡",
+      "channel_id": "UC5TUpGq1ARxhgMkBhE3HOaQ",
+      "category": "General",
+      "limit": 3
+    },
+    {
+      "name": "ellyse on film",
+      "channel_id": "UCQCoTKUIJgEOsxsTFV0wFXQ",
+      "category": "General",
+      "limit": 3
+    },
+    {
+      "name": "2filmus",
+      "channel_id": "UCmF99DPDr2R7EB8_psYQ_Lw",
+      "category": "General",
+      "limit": 3
+    },
+    {
+      "name": "claraylife",
+      "channel_id": "UCX-yRvxYPnIHOvJsLtbyplw",
+      "category": "General",
+      "limit": 3
+    },
+    {
+      "name": "Taylor P",
+      "channel_id": "UCeF5n_Qu2wfaj1Z_JQxwPKw",
+      "category": "General",
+      "limit": 3
+    },
+    {
+      "name": "Drea'sLife",
+      "channel_id": "UCxgBte9UY_7BZFIjxyjnrMA",
+      "category": "General",
+      "limit": 3
+    }
   ],
   "twitch_channels": [
     "pokimane",

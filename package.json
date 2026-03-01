@@ -4,7 +4,16 @@
   "description": "A modern, mobile-responsive RSS reader webapp with Glance-inspired neutral UI",
   "private": true,
   "scripts": {
-    "start": "vercel dev"
+    "prepare": "husky",
+    "start": "vercel dev",
+    "check:feeds:strict": "node scripts/validate-feed-config.mjs --strict",
+    "sync:feeds": "node scripts/generate-feeds-js.mjs --force",
+    "refresh:feeds": "npm run sync:feeds && npm run check:feeds:strict",
+    "precommit:feeds": "npm run refresh:feeds && git add public/feeds.js",
+    "ci:feeds": "npm run refresh:feeds && git diff --exit-code -- public/feeds.js"
+  },
+  "devDependencies": {
+    "husky": "^9.1.7"
   },
   "dependencies": {
     "fast-xml-parser": "^4.5.3",

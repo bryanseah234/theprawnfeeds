@@ -16,8 +16,16 @@ app = Flask(__name__, static_folder='public', static_url_path='')
 # Format: { url: { 'etag': '...', 'last_modified': '...', 'data': {...} } }
 FEED_CACHE = {}
 
-# Enable debug logging
-app.config['DEBUG'] = True
+# Enable debug mode only when explicitly configured
+app.config['DEBUG'] = os.environ.get('FLASK_DEBUG', 'false').lower() == 'true'
+
+
+def is_production():
+    """Return True when running in production environment."""
+    vercel_env = os.environ.get('VERCEL_ENV', '').lower()
+    app_env = os.environ.get('APP_ENV', '').lower()
+    flask_env = os.environ.get('FLASK_ENV', '').lower()
+    return vercel_env == 'production' or app_env == 'production' or flask_env == 'production'
 
 # Parallel fetching configuration
 PARALLEL_TIMEOUT = 10  # Overall timeout for parallel operations in seconds
@@ -150,6 +158,7 @@ def fetch_rss_feed(url, limit=5, enable_load_more=True):
         # Fetch more items if requested (for load-more feature)
         max_items = MAX_FETCH_ITEMS if enable_load_more else limit
         items = []
+        site_url = ''
         for entry in feed.entries[:max_items]:
             published = entry.get('published', entry.get('updated', ''))
             try:
@@ -749,6 +758,9 @@ def root():
         log(f"CRITICAL ERROR in root route: {e}")
         log(traceback.format_exc())
 
+        if is_production():
+            return "Internal Server Error", 500
+
         # Return detailed error page
         error_html = f"""
         <!DOCTYPE html>
@@ -781,17 +793,25 @@ def root():
 @app.route('/health')
 def health():
     log("Health check endpoint called")
-    return jsonify({
+    payload: dict[str, object] = {
         "status": "ok",
         "python_version": sys.version,
-        "cwd": os.getcwd(),
-        "files": os.listdir('.')
-    }), 200
+    }
+
+    # Keep verbose diagnostics out of production responses
+    if not is_production():
+        payload["cwd"] = os.getcwd()
+        payload["files"] = os.listdir('.')
+
+    return jsonify(payload), 200
 
 
 @app.route('/debug')
 def debug():
     """Debug endpoint to check configuration"""
+    if is_production():
+        return jsonify({"status": "not_available"}), 404
+
     try:
         config = load_feeds_config()
         return jsonify({

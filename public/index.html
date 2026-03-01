@@ -85,6 +85,34 @@
     </div>
   </header>
 
+  <!-- Section Tools: explicit view toggle + per-section search -->
+  <div class="section-tools" aria-label="Section display controls">
+    <button id="view-toggle-btn" class="view-toggle-btn" type="button" aria-label="Toggle section view mode">
+      📜 Timeline
+    </button>
+    <label class="section-search-wrap" for="section-search">
+      <span class="sr-only">Filter current section</span>
+      <input
+        id="section-search"
+        class="section-search"
+        type="search"
+        placeholder="Filter current section..."
+        autocomplete="off"
+        spellcheck="false"
+      />
+      <button
+        id="section-search-clear"
+        class="section-search-clear"
+        type="button"
+        aria-label="Clear section filter"
+        title="Clear filter"
+        hidden
+      >
+        ✕
+      </button>
+    </label>
+  </div>
+
 
 
   <!-- Swipeable Sections Container -->
